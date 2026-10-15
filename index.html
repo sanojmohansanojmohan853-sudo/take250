@@ -1,0 +1,1896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take 250 — Slipper & Footwear Shop</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @media print {
+            body * {
+                visibility: hidden !important;
+            }
+            #printable-receipt-modal, #printable-receipt-modal * {
+                visibility: visible !important;
+            }
+            #printable-receipt-modal {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                background: white !important;
+                display: block !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .order-ping {
+            animation: pulse-ring 1.8s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchView('user')">
+                <div class="w-10 h-10 bg-white/10 backdrop-blur rounded-xl border border-white/20 flex items-center justify-center text-2xl shadow-inner">
+                    🩴
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl sm:text-2xl font-black tracking-tight">TAKE 250</span>
+                        <span class="bg-amber-400 text-amber-950 text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Flat ₹250</span>
+                    </div>
+                    <p class="text-[11px] text-amber-200 font-medium">Slipper & Footwear Store</p>
+                </div>
+            </div>
+
+            <!-- Header Controls: User Login + Cart + Admin Login -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- User Account Button (Mobile & Password Login) -->
+                <div id="user-header-auth-container">
+                    <button id="user-login-btn" onclick="openUserAuthModal()" class="bg-amber-900/60 hover:bg-amber-900 text-amber-100 border border-amber-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shadow-xs">
+                        <span>👤</span>
+                        <span id="user-auth-btn-text">User Login</span>
+                    </button>
+                </div>
+
+                <!-- Customer Cart Icon (User view) -->
+                <button id="header-cart-btn" onclick="openCartModal()" class="relative bg-amber-500 hover:bg-amber-400 text-amber-950 font-black p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-md">
+                    <span class="text-base">🛒</span>
+                    <span class="hidden sm:inline">Cart</span>
+                    <span id="cart-item-count" class="bg-amber-950 text-amber-200 text-[10px] font-black px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+
+                <!-- Page Switcher Tabs: USER / ADMIN -->
+                <div class="bg-black/30 p-1 rounded-xl flex items-center border border-white/20 shadow-inner">
+                    <button id="nav-btn-user" onclick="switchView('user')" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-white text-amber-900 shadow">
+                        <span>🛍️</span>
+                        <span>Shop</span>
+                    </button>
+                    <button id="nav-btn-admin" onclick="handleAdminNavClick()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-amber-500/30 text-amber-200 hover:bg-amber-500 hover:text-amber-950 border border-amber-400/50 relative shadow-sm">
+                        <span>👑</span>
+                        <span>Admin</span>
+                        <span id="admin-pending-badge" class="hidden absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 rounded-full order-ping flex items-center justify-center text-[9px] font-black text-white">!</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================================================= -->
+    <!-- 1. USER PAGE (SHOWS ONLY: PRODUCTS, SIZES, ADD, AMOUNT, CART)             -->
+    <!-- ========================================================================= -->
+    <div id="view-user" class="flex-1 flex flex-col">
+        <!-- Minimal Category Bar -->
+        <section class="bg-white border-b border-slate-200 py-3 px-4 shadow-xs sticky top-[65px] z-30">
+            <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 overflow-x-auto">
+                <div class="flex items-center space-x-2">
+                    <button onclick="filterUserCategory('all')" data-user-cat="all" class="user-cat-btn px-4 py-1.5 rounded-full text-xs font-extrabold bg-amber-600 text-white shadow-sm transition-all whitespace-nowrap">🌟 All Slippers</button>
+                    <button onclick="filterUserCategory('men')" data-user-cat="men" class="user-cat-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 hover:bg-amber-50 transition-all whitespace-nowrap">👞 Men</button>
+                    <button onclick="filterUserCategory('women')" data-user-cat="women" class="user-cat-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 hover:bg-amber-50 transition-all whitespace-nowrap">👡 Women</button>
+                    <button onclick="filterUserCategory('ortho')" data-user-cat="ortho" class="user-cat-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 hover:bg-amber-50 transition-all whitespace-nowrap">🩺 Cloud & Ortho</button>
+                    <button onclick="filterUserCategory('house')" data-user-cat="house" class="user-cat-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 hover:bg-amber-50 transition-all whitespace-nowrap">🏠 Daily & House</button>
+                    <button onclick="filterUserCategory('kids')" data-user-cat="kids" class="user-cat-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 hover:bg-amber-50 transition-all whitespace-nowrap">🧒 Kids</button>
+                </div>
+                <div class="text-xs text-slate-500 font-semibold whitespace-nowrap hidden md:block">
+                    <span id="displayed-products-count" class="font-bold text-slate-800">0</span> items
+                </div>
+            </div>
+        </section>
+
+        <!-- Product Cards Grid with Real Slipper Photos -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-1">
+            <div id="user-products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Products injected by JavaScript -->
+            </div>
+        </main>
+
+        <!-- Floating Cart Bar (Appears when items are in cart) -->
+        <div id="sticky-cart-bar" class="fixed bottom-5 left-4 right-4 max-w-md mx-auto bg-slate-900 text-white rounded-2xl p-3.5 shadow-2xl flex items-center justify-between z-30 transform transition-all duration-300 translate-y-24 opacity-0 pointer-events-none border border-slate-700">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-amber-500 text-amber-950 font-black rounded-xl flex items-center justify-center text-lg">
+                    🩴
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 font-medium"><span id="sticky-cart-qty">0</span> pairs selected</p>
+                    <p class="text-lg font-black text-amber-400" id="sticky-cart-total">₹0</p>
+                </div>
+            </div>
+            <button onclick="openCartModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all flex items-center space-x-1.5">
+                <span>View Cart & Order</span>
+                <span>→</span>
+            </button>
+        </div>
+
+        <!-- Subtle Store Footer with Direct Admin Link -->
+        <footer class="mt-auto bg-slate-900 text-slate-300 py-6 px-4 border-t border-slate-800 text-center text-xs space-y-2">
+            <p class="text-slate-400 font-medium">🩴 TAKE 250 • Flat ₹250 Slipper Store • take250.web.app</p>
+            <div class="pt-1">
+                <button onclick="handleAdminNavClick()" class="inline-flex items-center space-x-1.5 text-amber-400 hover:text-amber-300 font-bold underline">
+                    <span>👑 Admin Login & Portal (Sales, Orders & Products) →</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 2. ADMIN PAGE (PROTECTED BY ADMIN PASSWORD LOGIN)                         -->
+    <!-- ========================================================================= -->
+    <div id="view-admin" class="flex-1 flex flex-col hidden p-4 md:p-6 max-w-7xl mx-auto w-full space-y-6">
+        
+        <!-- Admin Bar with Logout Button -->
+        <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-11 h-11 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center text-2xl font-black">
+                    👑
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h2 class="text-xl font-black text-slate-900">Admin Dashboard</h2>
+                        <span class="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center space-x-1">
+                            <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                            <span>Live Chime Active</span>
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500">Sales metrics, customer orders with real-time audio alert, and product photos.</p>
+                </div>
+            </div>
+
+            <!-- Quick Action Buttons & Logout -->
+            <div class="flex items-center flex-wrap gap-2">
+                <button onclick="openAddProductModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 shadow-sm">
+                    <span>📷</span>
+                    <span>Add Slipper With Photo</span>
+                </button>
+                <button onclick="simulateCustomerOrder()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 shadow-xs">
+                    <span>⚡</span>
+                    <span>Test Sound</span>
+                </button>
+                <button id="admin-sound-toggle" onclick="toggleSound()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 shadow-sm">
+                    <span id="admin-sound-icon">🔊</span>
+                    <span id="admin-sound-text">Sound ON</span>
+                </button>
+                <button onclick="logoutAdmin()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-xs px-3 py-2 rounded-xl transition-all">
+                    🔒 Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- 1. SALES METRICS SECTION -->
+        <section class="space-y-2">
+            <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">📊 Store Sales Performance</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center space-x-3.5">
+                    <div class="p-3 bg-amber-100 text-amber-700 rounded-xl text-xl">💰</div>
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Today's Sales</p>
+                        <h3 class="text-xl md:text-2xl font-black text-slate-800" id="admin-metric-revenue">₹0</h3>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center space-x-3.5">
+                    <div class="p-3 bg-blue-100 text-blue-700 rounded-xl text-xl">📦</div>
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Orders</p>
+                        <h3 class="text-xl md:text-2xl font-black text-slate-800" id="admin-metric-orders">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center space-x-3.5">
+                    <div class="p-3 bg-emerald-100 text-emerald-700 rounded-xl text-xl">🩴</div>
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pairs Sold</p>
+                        <h3 class="text-xl md:text-2xl font-black text-slate-800" id="admin-metric-pairs">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center space-x-3.5">
+                    <div class="p-3 bg-purple-100 text-purple-700 rounded-xl text-xl">📈</div>
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Monthly Sales</p>
+                        <h3 class="text-xl md:text-2xl font-black text-slate-800" id="admin-metric-monthly">₹0</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. LIVE ORDERS SECTION -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <span class="text-base font-black text-slate-800">📥 Live Customer Orders</span>
+                    <span id="active-orders-count" class="bg-rose-100 text-rose-800 text-xs font-black px-2.5 py-0.5 rounded-full">0 Active</span>
+                </div>
+                <button onclick="clearAllOrders()" class="text-xs text-rose-500 hover:text-rose-700 font-bold hover:underline">Clear History</button>
+            </div>
+
+            <!-- Orders Feed Container -->
+            <div id="orders-feed-container" class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- 3. PRODUCT MANAGEMENT SECTION WITH IMAGE ADD OPTION -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                    <h3 class="text-base font-black text-slate-800 flex items-center space-x-2">
+                        <span>👟 Slipper Products Catalog</span>
+                        <span id="admin-products-count-badge" class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                    </h3>
+                    <p class="text-xs text-slate-500">Add new slipper photos or remove products from the user store.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="resetDefaultProducts()" class="text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 px-3 py-2 rounded-xl transition-all">
+                        ↺ Reset Defaults
+                    </button>
+                    <button onclick="openAddProductModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all flex items-center space-x-1.5 shadow-sm">
+                        <span>📷 Add Slipper With Photo</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="text-slate-400 uppercase font-black border-b border-slate-100">
+                            <th class="pb-2.5">Slipper Image & Name</th>
+                            <th class="pb-2.5">Category</th>
+                            <th class="pb-2.5">Sizes</th>
+                            <th class="pb-2.5">Price</th>
+                            <th class="pb-2.5 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-products-table-body" class="divide-y divide-slate-100">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 3. ADMIN LOGIN MODAL (USERNAME & PASSWORD)                                -->
+    <!-- ========================================================================= -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <span class="text-2xl">👑</span>
+                    <div>
+                        <h3 class="text-lg font-black text-slate-900">Admin Login</h3>
+                        <p class="text-xs text-slate-500">Store Management Access</p>
+                    </div>
+                </div>
+                <button onclick="closeAdminLoginModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg">×</button>
+            </div>
+
+            <form onsubmit="handleAdminLoginSubmit(event)" class="space-y-3.5 text-xs">
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Admin Username</label>
+                    <input type="text" id="admin-username-input" value="admin" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold">
+                </div>
+
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Password</label>
+                    <input type="password" id="admin-password-input" placeholder="Enter admin password" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold">
+                    <p class="text-[10px] text-slate-400 mt-1">Default Password: <span class="font-bold text-amber-700">admin250</span></p>
+                </div>
+
+                <div id="admin-login-error" class="text-xs text-rose-600 font-bold hidden bg-rose-50 p-2 rounded-lg">
+                    Incorrect username or password!
+                </div>
+
+                <div class="pt-2 flex space-x-2">
+                    <button type="button" onclick="closeAdminLoginModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">Cancel</button>
+                    <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-black py-2.5 rounded-xl transition-all shadow-md">Login →</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 4. USER AUTH MODAL (MOBILE NUMBER & PASSWORD)                             -->
+    <!-- ========================================================================= -->
+    <div id="user-auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            
+            <!-- Auth Header & Switcher -->
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <span class="text-2xl">👤</span>
+                    <div>
+                        <h3 class="text-lg font-black text-slate-900" id="user-auth-title">Customer Login</h3>
+                        <p class="text-xs text-slate-500">Sign in with Mobile & Password</p>
+                    </div>
+                </div>
+                <button onclick="closeUserAuthModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg">×</button>
+            </div>
+
+            <!-- Tab Switcher: Login / Register -->
+            <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-xl text-xs font-bold text-center">
+                <button type="button" id="tab-user-login" onclick="setUserAuthMode('login')" class="py-1.5 rounded-lg bg-white text-slate-900 shadow-xs font-black">Login</button>
+                <button type="button" id="tab-user-register" onclick="setUserAuthMode('register')" class="py-1.5 rounded-lg text-slate-500 hover:text-slate-900">New Account</button>
+            </div>
+
+            <!-- Form: Login or Register -->
+            <form onsubmit="handleUserAuthSubmit(event)" class="space-y-3 text-xs">
+                <!-- Name field (Only shown for Register) -->
+                <div id="field-user-name" class="hidden">
+                    <label class="font-bold text-slate-700 block mb-1">Your Full Name *</label>
+                    <input type="text" id="user-auth-name" placeholder="e.g. Rahul Sharma" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold">
+                </div>
+
+                <!-- Mobile Number -->
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Mobile Phone Number *</label>
+                    <input type="tel" id="user-auth-phone" required placeholder="e.g. 9876543210" maxlength="10" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold">
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Password *</label>
+                    <input type="password" id="user-auth-password" required placeholder="Enter your password" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold">
+                </div>
+
+                <div id="user-auth-error" class="text-xs text-rose-600 font-bold hidden bg-rose-50 p-2 rounded-lg"></div>
+
+                <div class="pt-2">
+                    <button type="submit" id="user-auth-submit-btn" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-2.5 rounded-xl transition-all shadow-md">
+                        Login Now →
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 5. USER ORDERS HISTORY MODAL ("MY ORDERS")                                -->
+    <!-- ========================================================================= -->
+    <div id="user-my-orders-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <span class="text-2xl">📦</span>
+                    <div>
+                        <h3 class="text-lg font-black text-slate-900">My Slipper Orders</h3>
+                        <p class="text-xs text-slate-500" id="my-orders-user-label"></p>
+                    </div>
+                </div>
+                <button onclick="closeMyOrdersModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg">×</button>
+            </div>
+
+            <div id="my-orders-list-container" class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
+                <!-- User's orders dynamically populated -->
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 flex justify-between items-center">
+                <button onclick="logoutUser()" class="text-xs font-bold text-rose-600 hover:underline">Logout Account</button>
+                <button onclick="closeMyOrdersModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 6. ADD PRODUCT WITH IMAGE MODAL (ADMIN ONLY)                              -->
+    <!-- ========================================================================= -->
+    <div id="add-product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <span class="text-2xl">📷</span>
+                    <div>
+                        <h3 class="text-lg font-black text-slate-900">Add Slipper Product</h3>
+                        <p class="text-xs text-slate-500">Upload or link a photo of the slipper</p>
+                    </div>
+                </div>
+                <button onclick="closeAddProductModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg">×</button>
+            </div>
+
+            <form onsubmit="handleSaveNewProduct(event)" class="space-y-3.5 text-xs">
+                <!-- Image Upload & Preview -->
+                <div class="bg-slate-50 p-3.5 rounded-2xl border-2 border-dashed border-slate-200 space-y-2">
+                    <label class="font-extrabold text-slate-800 block">Slipper Photo (Upload File or Paste Image URL) *</label>
+                    <div class="flex items-center space-x-2">
+                        <label class="cursor-pointer bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-xs">
+                            <span>📁 Upload Photo</span>
+                            <input type="file" id="new-prod-file" accept="image/*" onchange="handleImageFileSelect(event)" class="hidden">
+                        </label>
+                        <span class="text-slate-400 font-medium">OR paste URL below</span>
+                    </div>
+                    <input type="url" id="new-prod-img-url" oninput="handleImageUrlInput(event)" placeholder="https://example.com/slipper-photo.jpg" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+
+                    <div id="image-preview-container" class="hidden pt-1">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Preview:</p>
+                        <img id="image-preview-el" src="" class="w-full h-36 object-cover rounded-xl border border-slate-200 shadow-sm" alt="Preview">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Slipper Name *</label>
+                    <input type="text" id="new-prod-name" required placeholder="e.g. Men's Ortho Comfort Slide" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="font-bold text-slate-700 block mb-1">Category *</label>
+                        <select id="new-prod-cat" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="men">Men's Slippers</option>
+                            <option value="women">Women's Slippers</option>
+                            <option value="ortho">Cloud & Ortho</option>
+                            <option value="house">Daily & House Wear</option>
+                            <option value="kids">Kids Slippers</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="font-bold text-slate-700 block mb-1">Price (₹) *</label>
+                        <input type="number" id="new-prod-price" value="250" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="font-bold text-slate-700 block mb-1">Available Sizes</label>
+                        <input type="text" id="new-prod-sizes" value="6, 7, 8, 9, 10" placeholder="e.g. 6, 7, 8, 9, 10" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="font-bold text-slate-700 block mb-1">Badge Tag</label>
+                        <input type="text" id="new-prod-badge" value="New Arrival" placeholder="e.g. Trending / New" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Short Description</label>
+                    <input type="text" id="new-prod-desc" placeholder="e.g. Ergonomic arch support and soft cushion sole" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex space-x-2">
+                    <button type="button" onclick="closeAddProductModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">Cancel</button>
+                    <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-2.5 rounded-xl transition-all shadow-md">Save & Publish</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 7. CUSTOMER CART & CHECKOUT MODAL                                         -->
+    <!-- ========================================================================= -->
+    <div id="cart-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <span class="text-2xl">🛍️</span>
+                    <div>
+                        <h3 class="text-lg font-black text-slate-900">Your Slipper Order</h3>
+                        <p class="text-xs text-slate-500 font-medium">Flat ₹250 per pair</p>
+                    </div>
+                </div>
+                <button onclick="closeCartModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg">×</button>
+            </div>
+
+            <!-- Items List -->
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1" id="cart-items-list"></div>
+
+            <!-- Customer Details Form -->
+            <div class="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200/60 space-y-2.5 text-left text-xs">
+                <div class="flex justify-between items-center">
+                    <p class="font-bold text-amber-900 flex items-center space-x-1">
+                        <span>📝</span>
+                        <span>Customer Contact & Delivery</span>
+                    </p>
+                    <span id="cart-user-logged-badge" class="text-[10px] text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 hidden">
+                        ✓ Verified Account
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-600">Your Name *</label>
+                        <input type="text" id="cust-name" placeholder="e.g. Rahul Sharma" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 mt-0.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-600">Mobile Phone *</label>
+                        <input type="tel" id="cust-phone" placeholder="e.g. 9876543210" maxlength="10" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 mt-0.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[11px] font-bold text-slate-600">Order Type</label>
+                    <div class="flex space-x-3 mt-1">
+                        <label class="flex items-center space-x-1.5 cursor-pointer font-medium text-slate-700">
+                            <input type="radio" name="order-type" value="pickup" checked class="text-amber-600 focus:ring-amber-500">
+                            <span>Store Pickup</span>
+                        </label>
+                        <label class="flex items-center space-x-1.5 cursor-pointer font-medium text-slate-700">
+                            <input type="radio" name="order-type" value="delivery" class="text-amber-600 focus:ring-amber-500">
+                            <span>Home Delivery</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary & Submit -->
+            <div class="pt-2 border-t border-slate-100 space-y-3">
+                <div class="flex justify-between items-baseline">
+                    <span class="text-sm font-bold text-slate-600">Total Amount:</span>
+                    <span class="text-2xl font-black text-amber-600" id="cart-modal-total">₹0</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="closeCartModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition-all">
+                        Add More
+                    </button>
+                    <button onclick="submitCustomerOrder()" id="cart-submit-btn" class="flex-2 w-2/3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-black py-2.5 px-4 rounded-xl text-xs transition-all shadow-md">
+                        Place Order Now →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 8. ORDER CONFIRMED SUCCESS MODAL                                          -->
+    <!-- ========================================================================= -->
+    <div id="order-success-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+                🎉
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-slate-900">Order Placed!</h3>
+                <p class="text-xs text-slate-500 mt-1">Thank you for shopping at TAKE 250.</p>
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 my-3">
+                    <p class="text-xs font-bold text-amber-800">Order Token:</p>
+                    <p class="text-xl font-black text-amber-900" id="success-order-id">#T250-0000</p>
+                    <p class="text-[11px] text-amber-700 mt-1" id="success-order-summary">0 pairs • Total ₹0</p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-500">The store admin has received your order alert with audio chime!</p>
+            <button onclick="closeSuccessModal()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-2.5 rounded-xl text-xs transition-all shadow">
+                Done & Continue Shopping
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 9. PRINTABLE RECEIPT MODAL                                                -->
+    <!-- ========================================================================= -->
+    <div id="printable-receipt-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
+            <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                🩴
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-slate-900">TAKE 250</h3>
+                <p class="text-xs text-slate-500 font-medium">Slipper & Footwear Store</p>
+                <p class="text-[11px] text-slate-400">take250.web.app</p>
+            </div>
+            <div class="border-t border-b border-dashed border-slate-300 py-3 text-left text-xs space-y-1.5" id="receipt-details"></div>
+            <div class="flex justify-between items-center font-bold text-slate-800 text-sm">
+                <span>Total Amount:</span>
+                <span class="text-xl font-black text-amber-600" id="receipt-grand-total">₹0</span>
+            </div>
+            <div class="no-print pt-2 flex space-x-2">
+                <button onclick="window.print()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow">
+                    Print Receipt
+                </button>
+                <button onclick="document.getElementById('printable-receipt-modal').classList.add('hidden')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
+
+    <!-- ========================================================================= -->
+    <!-- 10. JAVASCRIPT LOGIC WITH ADMIN & USER NUMBER/PASSWORD AUTH               -->
+    <!-- ========================================================================= -->
+    <script>
+        // --- High-Quality Default Products with Real Slipper Photos ---
+        const DEFAULT_PRODUCTS = [
+            {
+                id: 101,
+                name: "Men's Arch Support Slide",
+                category: "men",
+                price: 250,
+                badge: "Best Seller",
+                image: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=500&auto=format&fit=crop&q=80",
+                desc: "Ergonomic deep heel cup with anti-skid bottom for maximum comfort",
+                sizes: [7, 8, 9, 10]
+            },
+            {
+                id: 102,
+                name: "Men's Premium Leather Slide",
+                category: "men",
+                price: 250,
+                badge: "Trending",
+                image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=500&auto=format&fit=crop&q=80",
+                desc: "Rich faux leather finish with durable traction sole",
+                sizes: [7, 8, 9, 10]
+            },
+            {
+                id: 103,
+                name: "Men's Lightweight EVA Flip-Flop",
+                category: "men",
+                price: 250,
+                badge: "Durable",
+                image: "https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=500&auto=format&fit=crop&q=80",
+                desc: "Water-resistant ultra lightweight slippers for daily wear",
+                sizes: [6, 7, 8, 9, 10]
+            },
+            {
+                id: 104,
+                name: "Men's Sport Ventilation Clogs",
+                category: "men",
+                price: 250,
+                badge: "All Weather",
+                image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=80",
+                desc: "Breathable clogs with pivoting heel strap and drainage holes",
+                sizes: [7, 8, 9, 10]
+            },
+            {
+                id: 201,
+                name: "Women's 4cm Cloud Cush Slides",
+                category: "women",
+                price: 250,
+                badge: "Top Pick",
+                image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500&auto=format&fit=crop&q=80",
+                desc: "Ultra-thick cloud bounce sole, walking on clouds feeling",
+                sizes: [5, 6, 7, 8]
+            },
+            {
+                id: 202,
+                name: "Women's Velvet Cozy Slippers",
+                category: "women",
+                price: 250,
+                badge: "Soft Touch",
+                image: "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=500&auto=format&fit=crop&q=80",
+                desc: "Super soft velvet touch indoor and bedroom slip-ons",
+                sizes: [5, 6, 7, 8]
+            },
+            {
+                id: 203,
+                name: "Women's Pastel Flip-Flop",
+                category: "women",
+                price: 250,
+                badge: "Daily Wear",
+                image: "https://images.unsplash.com/photo-1515347619252-60a4bf4fff4f?w=500&auto=format&fit=crop&q=80",
+                desc: "Chic pastel tones with soft cushioned footbed",
+                sizes: [4, 5, 6, 7, 8]
+            },
+            {
+                id: 301,
+                name: "Doctor Ortho Pain Relief",
+                category: "ortho",
+                price: 250,
+                badge: "Doctor Rec.",
+                image: "https://images.unsplash.com/photo-1582588678413-dbf45f4823e9?w=500&auto=format&fit=crop&q=80",
+                desc: "Relieves heel spur, joint pain, and plantar fasciitis",
+                sizes: [6, 7, 8, 9, 10]
+            },
+            {
+                id: 302,
+                name: "Super Cloud Bounce Pillow Slides",
+                category: "ortho",
+                price: 250,
+                badge: "Cloud 4cm",
+                image: "https://images.unsplash.com/photo-1595341888016-a392ef81b7de?w=500&auto=format&fit=crop&q=80",
+                desc: "Max pillow cushioning to relax tired feet after work",
+                sizes: [5, 6, 7, 8, 9]
+            },
+            {
+                id: 401,
+                name: "Anti-Skid Bathroom Drain Slides",
+                category: "house",
+                price: 250,
+                badge: "Drain Sole",
+                image: "https://images.unsplash.com/photo-1539185441755-769473a23570?w=500&auto=format&fit=crop&q=80",
+                desc: "Fast-drying drain holes with superior wet-floor grip",
+                sizes: [5, 6, 7, 8, 9]
+            },
+            {
+                id: 402,
+                name: "Classic Hawai Rubber Chappal",
+                category: "house",
+                price: 250,
+                badge: "High Grip",
+                image: "https://images.unsplash.com/photo-1562183241-b937e95585b6?w=500&auto=format&fit=crop&q=80",
+                desc: "Heavy-duty flexible rubber chappal for rough and tough use",
+                sizes: [6, 7, 8, 9, 10]
+            },
+            {
+                id: 501,
+                name: "Kids Cartoon Slide",
+                category: "kids",
+                price: 250,
+                badge: "Kids Fun",
+                image: "https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=500&auto=format&fit=crop&q=80",
+                desc: "Cute character slippers with safe anti-skid sole for children",
+                sizes: [1, 2, 3, 4]
+            }
+        ];
+
+        // --- App State ---
+        let products = JSON.parse(localStorage.getItem('take250_products_v3')) || DEFAULT_PRODUCTS;
+        let ordersHistory = JSON.parse(localStorage.getItem('take250_orders_v3')) || [];
+        let customerCart = [];
+        let currentView = 'user'; // 'user' or 'admin'
+        let soundEnabled = true;
+        let audioCtx = null;
+        let uploadedImageBase64 = null;
+
+        // --- Authentication State ---
+        // Admin credentials:
+        const ADMIN_USER = "admin";
+        const ADMIN_PASS = "admin250";
+        let isAdminLoggedIn = JSON.parse(localStorage.getItem('take250_admin_session')) || false;
+
+        // User credentials database:
+        let registeredUsers = JSON.parse(localStorage.getItem('take250_registered_users')) || [];
+        let currentUser = JSON.parse(localStorage.getItem('take250_user_session')) || null;
+        let userAuthMode = 'login'; // 'login' or 'register'
+
+        // BroadcastChannel for instant cross-tab real-time sync
+        const commChannel = new BroadcastChannel('take250_sync_channel_v3');
+        commChannel.onmessage = (event) => {
+            if (!event.data) return;
+            if (event.data.type === 'NEW_ORDER') {
+                handleIncomingOrderEvent(event.data.order);
+            } else if (event.data.type === 'PRODUCTS_UPDATED') {
+                products = JSON.parse(localStorage.getItem('take250_products_v3')) || DEFAULT_PRODUCTS;
+                renderUserProducts();
+                renderAdminProductsTable();
+            }
+        };
+
+        // Storage listener for cross-window sync
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'take250_orders_v3') {
+                ordersHistory = JSON.parse(e.newValue) || [];
+                renderAdminOrders();
+                updateAdminMetrics();
+            }
+            if (e.key === 'take250_products_v3') {
+                products = JSON.parse(e.newValue) || DEFAULT_PRODUCTS;
+                renderUserProducts();
+                renderAdminProductsTable();
+            }
+        });
+
+        // ==========================================
+        // AUDIO ALERT (Web Audio API)
+        // ==========================================
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioClass) audioCtx = new AudioClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playOrderAlertSound() {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const now = ctx.currentTime;
+                playTone(ctx, 523.25, now, 0.35, 0.4);       // C5
+                playTone(ctx, 659.25, now + 0.12, 0.35, 0.45); // E5
+                playTone(ctx, 783.99, now + 0.24, 0.45, 0.5);  // G5
+                playTone(ctx, 1046.50, now + 0.36, 0.7, 0.65, true); // High C6 Bell
+            } catch (e) {
+                console.warn('Audio error:', e);
+            }
+        }
+
+        function playTone(ctx, freq, start, duration, gainLevel, isBell = false) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = isBell ? 'triangle' : 'sine';
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.001, start);
+            gain.gain.linearRampToValueAtTime(gainLevel, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + duration);
+        }
+
+        function playClickChime() {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, now);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } catch (e) {}
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('admin-sound-icon');
+            const text = document.getElementById('admin-sound-text');
+            const btn = document.getElementById('admin-sound-toggle');
+
+            if (soundEnabled) {
+                btn.className = "bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 shadow-sm";
+                icon.textContent = "🔊";
+                text.textContent = "Sound ON";
+                playOrderAlertSound();
+                showToast("🔔 Sound Active", "Order alerts are enabled.");
+            } else {
+                btn.className = "bg-slate-700 hover:bg-slate-600 text-slate-200 font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 shadow-sm";
+                icon.textContent = "🔇";
+                text.textContent = "Sound OFF";
+                showToast("🔇 Muted", "Order alerts are muted.");
+            }
+        }
+
+        function testNotificationSound() {
+            getAudioContext();
+            playOrderAlertSound();
+            showToast("🔔 Chime Test", "Order notification sound played!");
+        }
+
+        // ==========================================
+        // ADMIN AUTHENTICATION (USERNAME & PASSWORD)
+        // ==========================================
+        function handleAdminNavClick() {
+            if (isAdminLoggedIn) {
+                switchView('admin');
+            } else {
+                openAdminLoginModal();
+            }
+        }
+
+        function openAdminLoginModal() {
+            document.getElementById('admin-login-error').classList.add('hidden');
+            document.getElementById('admin-password-input').value = '';
+            document.getElementById('admin-login-modal').classList.remove('hidden');
+        }
+
+        function closeAdminLoginModal() {
+            document.getElementById('admin-login-modal').classList.add('hidden');
+        }
+
+        function handleAdminLoginSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById('admin-username-input').value.trim();
+            const password = document.getElementById('admin-password-input').value.trim();
+            const errEl = document.getElementById('admin-login-error');
+
+            if (username === ADMIN_USER && password === ADMIN_PASS) {
+                isAdminLoggedIn = true;
+                localStorage.setItem('take250_admin_session', JSON.stringify(true));
+                closeAdminLoginModal();
+                switchView('admin');
+                showToast("👑 Admin Logged In", "Welcome to TAKE 250 Store Management.");
+            } else {
+                errEl.classList.remove('hidden');
+            }
+        }
+
+        function logoutAdmin() {
+            isAdminLoggedIn = false;
+            localStorage.setItem('take250_admin_session', JSON.stringify(false));
+            switchView('user');
+            showToast("Logged Out", "Admin session closed.");
+        }
+
+        // ==========================================
+        // USER AUTHENTICATION (NUMBER & PASSWORD)
+        // ==========================================
+        function openUserAuthModal() {
+            if (currentUser) {
+                openMyOrdersModal();
+            } else {
+                setUserAuthMode('login');
+                document.getElementById('user-auth-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeUserAuthModal() {
+            document.getElementById('user-auth-modal').classList.add('hidden');
+        }
+
+        function setUserAuthMode(mode) {
+            userAuthMode = mode;
+            const tabLogin = document.getElementById('tab-user-login');
+            const tabReg = document.getElementById('tab-user-register');
+            const fieldName = document.getElementById('field-user-name');
+            const title = document.getElementById('user-auth-title');
+            const submitBtn = document.getElementById('user-auth-submit-btn');
+            const errEl = document.getElementById('user-auth-error');
+            errEl.classList.add('hidden');
+
+            if (mode === 'login') {
+                tabLogin.className = "py-1.5 rounded-lg bg-white text-slate-900 shadow-xs font-black";
+                tabReg.className = "py-1.5 rounded-lg text-slate-500 hover:text-slate-900";
+                fieldName.classList.add('hidden');
+                title.textContent = "Customer Login";
+                submitBtn.textContent = "Login Now →";
+            } else {
+                tabReg.className = "py-1.5 rounded-lg bg-white text-slate-900 shadow-xs font-black";
+                tabLogin.className = "py-1.5 rounded-lg text-slate-500 hover:text-slate-900";
+                fieldName.classList.remove('hidden');
+                title.textContent = "Create Account";
+                submitBtn.textContent = "Create Account & Login →";
+            }
+        }
+
+        function handleUserAuthSubmit(e) {
+            e.preventDefault();
+            const phone = document.getElementById('user-auth-phone').value.trim();
+            const password = document.getElementById('user-auth-password').value.trim();
+            const name = document.getElementById('user-auth-name').value.trim();
+            const errEl = document.getElementById('user-auth-error');
+
+            if (!phone || phone.length < 10) {
+                errEl.textContent = "Please enter a valid 10-digit mobile phone number.";
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            if (!password || password.length < 3) {
+                errEl.textContent = "Password must be at least 3 characters long.";
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            if (userAuthMode === 'register') {
+                if (!name) {
+                    errEl.textContent = "Please enter your name.";
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                const existing = registeredUsers.find(u => u.phone === phone);
+                if (existing) {
+                    errEl.textContent = "An account with this mobile number already exists! Please login.";
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                const newUser = { name: name, phone: phone, password: password, createdAt: new Date().toISOString() };
+                registeredUsers.push(newUser);
+                localStorage.setItem('take250_registered_users', JSON.stringify(registeredUsers));
+
+                currentUser = newUser;
+                localStorage.setItem('take250_user_session', JSON.stringify(currentUser));
+                updateUserAuthUI();
+                closeUserAuthModal();
+                showToast("Account Created!", `Welcome, ${currentUser.name}!`);
+            } else {
+                // Login Mode
+                const user = registeredUsers.find(u => u.phone === phone && u.password === password);
+                if (user) {
+                    currentUser = user;
+                    localStorage.setItem('take250_user_session', JSON.stringify(currentUser));
+                    updateUserAuthUI();
+                    closeUserAuthModal();
+                    showToast("Login Successful!", `Welcome back, ${currentUser.name}!`);
+                } else {
+                    errEl.textContent = "Invalid mobile number or password! Check or create an account.";
+                    errEl.classList.remove('hidden');
+                }
+            }
+        }
+
+        function logoutUser() {
+            currentUser = null;
+            localStorage.removeItem('take250_user_session');
+            updateUserAuthUI();
+            closeMyOrdersModal();
+            showToast("Logged Out", "Customer account logged out.");
+        }
+
+        function updateUserAuthUI() {
+            const btnText = document.getElementById('user-auth-btn-text');
+            const cartBadge = document.getElementById('cart-user-logged-badge');
+            const custNameInput = document.getElementById('cust-name');
+            const custPhoneInput = document.getElementById('cust-phone');
+
+            if (currentUser) {
+                btnText.textContent = currentUser.name.split(' ')[0] + " (Orders)";
+                cartBadge.classList.remove('hidden');
+                if (custNameInput) custNameInput.value = currentUser.name;
+                if (custPhoneInput) custPhoneInput.value = currentUser.phone;
+            } else {
+                btnText.textContent = "User Login";
+                cartBadge.classList.add('hidden');
+            }
+        }
+
+        // ==========================================
+        // "MY ORDERS" HISTORY MODAL FOR USER
+        // ==========================================
+        function openMyOrdersModal() {
+            if (!currentUser) {
+                openUserAuthModal();
+                return;
+            }
+
+            const container = document.getElementById('my-orders-list-container');
+            const label = document.getElementById('my-orders-user-label');
+            label.textContent = `${currentUser.name} (${currentUser.phone})`;
+
+            const myOrders = ordersHistory.filter(o => o.customerPhone === currentUser.phone);
+
+            if (myOrders.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 text-slate-400 space-y-2">
+                        <div class="text-3xl">🩴</div>
+                        <p class="font-bold text-slate-600">No orders placed yet</p>
+                        <p class="text-xs">Browse the catalog to place your first slipper order!</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = myOrders.map(o => `
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
+                        <div class="flex justify-between items-center">
+                            <span class="font-black text-slate-900 text-xs">#${o.id}</span>
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${o.status === 'NEW' ? 'bg-rose-100 text-rose-800' : o.status === 'PREPARING' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                                ${o.status}
+                            </span>
+                        </div>
+                        <div class="text-slate-600 space-y-0.5">
+                            ${o.items.map(i => `<div class="flex justify-between text-[11px]"><span>${i.qty}x ${i.name} (Size ${i.size})</span><span class="font-bold">₹${i.price * i.qty}</span></div>`).join('')}
+                        </div>
+                        <div class="flex justify-between pt-1 border-t border-slate-200 font-extrabold text-slate-800">
+                            <span>Total (${o.orderType}):</span>
+                            <span class="text-amber-700">₹${o.total}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('user-my-orders-modal').classList.remove('hidden');
+        }
+
+        function closeMyOrdersModal() {
+            document.getElementById('user-my-orders-modal').classList.add('hidden');
+        }
+
+        // ==========================================
+        // VIEW SWITCHER (USER vs ADMIN)
+        // ==========================================
+        function switchView(view) {
+            currentView = view;
+            const userView = document.getElementById('view-user');
+            const adminView = document.getElementById('view-admin');
+            const userBtn = document.getElementById('nav-btn-user');
+            const adminBtn = document.getElementById('nav-btn-admin');
+            const cartBtn = document.getElementById('header-cart-btn');
+
+            if (view === 'user') {
+                userView.classList.remove('hidden');
+                adminView.classList.add('hidden');
+                cartBtn.classList.remove('hidden');
+                userBtn.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-white text-amber-900 shadow";
+                adminBtn.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-amber-500/30 text-amber-200 hover:bg-amber-500 hover:text-amber-950 border border-amber-400/50 relative shadow-sm";
+                if (window.location.hash === '#admin') {
+                    history.pushState(null, '', window.location.pathname);
+                }
+            } else {
+                userView.classList.add('hidden');
+                adminView.classList.remove('hidden');
+                cartBtn.classList.add('hidden');
+                adminBtn.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-white text-amber-900 shadow relative";
+                userBtn.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all text-amber-100 hover:text-white";
+                document.getElementById('admin-pending-badge').classList.add('hidden');
+                window.location.hash = '#admin';
+                renderAdminOrders();
+                renderAdminProductsTable();
+                updateAdminMetrics();
+            }
+        }
+
+        // ==========================================
+        // USER SHOPPING LOGIC (SHOWS ONLY PRODUCTS, SIZES, ADD, AMOUNT, CART)
+        // ==========================================
+        function renderUserProducts(category = 'all') {
+            const grid = document.getElementById('user-products-grid');
+            grid.innerHTML = '';
+            const filtered = category === 'all' ? products : products.filter(p => p.category === category);
+            document.getElementById('displayed-products-count').textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-16 text-slate-400 space-y-2">
+                        <div class="text-4xl">🩴</div>
+                        <p class="font-bold text-slate-600">No slippers found in this category.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg border border-slate-200/80 transition-all flex flex-col justify-between group";
+
+                const sizeButtons = p.sizes.map(s => `
+                    <button type="button" onclick="selectCardSize(${p.id}, ${s}, this)" class="size-pill-${p.id} px-2 py-1 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-600 hover:border-amber-500 hover:text-amber-700 transition-all ${s === p.sizes[0] ? 'bg-amber-600 text-white border-amber-600 active-size' : 'bg-slate-50'}">
+                        ${s}
+                    </button>
+                `).join('');
+
+                const imageHtml = p.image 
+                    ? `<div class="relative w-full h-48 bg-slate-100 overflow-hidden">
+                         <img src="${p.image}" alt="${p.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
+                         <span class="absolute top-2.5 right-2.5 bg-black/75 backdrop-blur text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">${p.badge || 'Flat ₹250'}</span>
+                       </div>`
+                    : `<div class="relative w-full h-44 bg-amber-50 flex items-center justify-center text-5xl">
+                         🩴
+                         <span class="absolute top-2.5 right-2.5 bg-amber-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">${p.badge || 'Flat ₹250'}</span>
+                       </div>`;
+
+                card.innerHTML = `
+                    <div>
+                        ${imageHtml}
+                        <div class="p-4 space-y-2">
+                            <h3 class="font-extrabold text-slate-900 text-base leading-snug group-hover:text-amber-700 transition-colors">${p.name}</h3>
+                            <p class="text-xs text-slate-500 leading-relaxed line-clamp-2">${p.desc || 'Premium comfort slipper'}</p>
+                            
+                            <div class="pt-1">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Select Size (UK/IND):</span>
+                                <div class="flex flex-wrap gap-1.5" id="sizes-row-${p.id}">
+                                    ${sizeButtons}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Amount & Add to Cart -->
+                    <div class="p-4 pt-2 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold block uppercase">Amount</span>
+                            <span class="text-xl font-black text-amber-600">₹${p.price}</span>
+                        </div>
+                        <button onclick="addToUserCart(${p.id})" class="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center space-x-1.5 active:scale-95">
+                            <span>+ Add to Cart</span>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterUserCategory(category) {
+            renderUserProducts(category);
+            document.querySelectorAll('.user-cat-btn').forEach(btn => {
+                if (btn.dataset.userCat === category) {
+                    btn.className = "user-cat-btn px-4 py-1.5 rounded-full text-xs font-extrabold bg-amber-600 text-white shadow-sm transition-all whitespace-nowrap";
+                } else {
+                    btn.className = "user-cat-btn px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 hover:bg-amber-50 transition-all whitespace-nowrap";
+                }
+            });
+        }
+
+        function selectCardSize(productId, size, button) {
+            const pills = document.querySelectorAll(`.size-pill-${productId}`);
+            pills.forEach(p => {
+                p.className = `size-pill-${productId} px-2 py-1 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-600 hover:border-amber-500 hover:text-amber-700 transition-all bg-slate-50`;
+                p.classList.remove('active-size');
+            });
+            button.className = `size-pill-${productId} px-2 py-1 text-[11px] font-bold rounded-lg border border-amber-600 bg-amber-600 text-white transition-all active-size`;
+        }
+
+        function getSelectedSizeForProduct(productId) {
+            const active = document.querySelector(`.size-pill-${productId}.active-size`);
+            return active ? active.textContent.trim() : 'Standard';
+        }
+
+        function addToUserCart(productId) {
+            playClickChime();
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            const size = getSelectedSizeForProduct(productId);
+            const cartKey = `${productId}_${size}`;
+
+            const existing = customerCart.find(item => item.cartKey === cartKey);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                customerCart.push({
+                    cartKey: cartKey,
+                    id: product.id,
+                    name: product.name,
+                    image: product.image,
+                    price: product.price,
+                    size: size,
+                    qty: 1
+                });
+            }
+
+            updateUserCartUI();
+            showToast("Added to Cart!", `${product.name} (Size ${size}) added.`);
+        }
+
+        function updateUserCartUI() {
+            const totalPairs = customerCart.reduce((sum, item) => sum + item.qty, 0);
+            const totalAmount = customerCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            document.getElementById('cart-item-count').textContent = totalPairs;
+
+            const stickyBar = document.getElementById('sticky-cart-bar');
+            if (totalPairs > 0 && currentView === 'user') {
+                stickyBar.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+                document.getElementById('sticky-cart-qty').textContent = totalPairs;
+                document.getElementById('sticky-cart-total').textContent = `₹${totalAmount}`;
+            } else {
+                stickyBar.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+            }
+        }
+
+        // ==========================================
+        // CART MODAL & CUSTOMER ORDER SUBMISSION
+        // ==========================================
+        function openCartModal() {
+            renderCartModalList();
+            if (currentUser) {
+                document.getElementById('cust-name').value = currentUser.name;
+                document.getElementById('cust-phone').value = currentUser.phone;
+            }
+            document.getElementById('cart-modal').classList.remove('hidden');
+        }
+
+        function closeCartModal() {
+            document.getElementById('cart-modal').classList.add('hidden');
+        }
+
+        function renderCartModalList() {
+            const list = document.getElementById('cart-items-list');
+            const totalEl = document.getElementById('cart-modal-total');
+            const submitBtn = document.getElementById('cart-submit-btn');
+
+            if (customerCart.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 space-y-2">
+                        <div class="text-4xl">🩴</div>
+                        <p class="font-bold text-slate-600">Your cart is empty</p>
+                        <p class="text-xs">Select slippers from the shop to order!</p>
+                    </div>
+                `;
+                totalEl.textContent = '₹0';
+                submitBtn.disabled = true;
+                return;
+            }
+
+            submitBtn.disabled = false;
+            let total = 0;
+            list.innerHTML = customerCart.map(item => {
+                const sub = item.price * item.qty;
+                total += sub;
+                const thumb = item.image
+                    ? `<img src="${item.image}" class="w-12 h-12 object-cover rounded-xl border border-slate-200" alt="${item.name}">`
+                    : `<div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-xl">🩴</div>`;
+
+                return `
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            ${thumb}
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-xs">${item.name}</h4>
+                                <span class="text-[10px] text-amber-700 bg-amber-100 font-black px-1.5 py-0.5 rounded">Size: ${item.size}</span>
+                                <span class="text-[11px] text-slate-500 font-semibold ml-2">₹${item.price} each</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="inline-flex items-center space-x-1.5 bg-white border border-slate-200 px-2 py-0.5 rounded-xl">
+                                <button onclick="changeCustomerCartQty('${item.cartKey}', -1)" class="w-4 h-4 flex items-center justify-center font-bold text-slate-600 hover:text-slate-900">-</button>
+                                <span class="text-xs font-black px-1 text-slate-800">${item.qty}</span>
+                                <button onclick="changeCustomerCartQty('${item.cartKey}', 1)" class="w-4 h-4 flex items-center justify-center font-bold text-slate-600 hover:text-slate-900">+</button>
+                            </div>
+                            <span class="font-black text-slate-900 text-xs min-w-[45px] text-right">₹${sub}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            totalEl.textContent = `₹${total}`;
+        }
+
+        function changeCustomerCartQty(cartKey, delta) {
+            const item = customerCart.find(i => i.cartKey === cartKey);
+            if (!item) return;
+            item.qty += delta;
+            if (item.qty <= 0) {
+                customerCart = customerCart.filter(i => i.cartKey !== cartKey);
+            }
+            updateUserCartUI();
+            renderCartModalList();
+        }
+
+        function submitCustomerOrder() {
+            if (customerCart.length === 0) return;
+
+            // If user is not logged in, prompt user login/number registration first
+            if (!currentUser) {
+                showToast("Login Required", "Please enter your mobile number and password to complete your order.");
+                openUserAuthModal();
+                return;
+            }
+
+            const name = document.getElementById('cust-name').value.trim() || currentUser.name;
+            const phone = document.getElementById('cust-phone').value.trim() || currentUser.phone;
+            const orderType = document.querySelector('input[name="order-type"]:checked').value;
+
+            const total = customerCart.reduce((s, i) => s + (i.price * i.qty), 0);
+            const totalQty = customerCart.reduce((s, i) => s + i.qty, 0);
+            const orderId = 'T250-' + Math.floor(1000 + Math.random() * 9000);
+
+            const newOrder = {
+                id: orderId,
+                customerName: name,
+                customerPhone: phone,
+                orderType: orderType === 'pickup' ? 'Store Pickup' : 'Home Delivery',
+                items: [...customerCart],
+                total: total,
+                totalQty: totalQty,
+                status: 'NEW',
+                timestamp: new Date().toISOString(),
+                displayTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                displayDate: new Date().toLocaleDateString()
+            };
+
+            ordersHistory.unshift(newOrder);
+            localStorage.setItem('take250_orders_v3', JSON.stringify(ordersHistory));
+
+            // Sync with Vercel Backend Storage
+            fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newOrder)
+            }).catch(err => console.log('Offline/Local order saved:', err.message));
+
+            commChannel.postMessage({ type: 'NEW_ORDER', order: newOrder });
+            playOrderAlertSound();
+
+            customerCart = [];
+            updateUserCartUI();
+            closeCartModal();
+
+            document.getElementById('success-order-id').textContent = '#' + orderId;
+            document.getElementById('success-order-summary').textContent = `${totalQty} pairs • Total ₹${total} (${newOrder.orderType})`;
+            document.getElementById('order-success-modal').classList.remove('hidden');
+
+            renderAdminOrders();
+            updateAdminMetrics();
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('order-success-modal').classList.add('hidden');
+        }
+
+        // ==========================================
+        // REALTIME ORDER ARRIVAL (ADMIN ALERT)
+        // ==========================================
+        function handleIncomingOrderEvent(order) {
+            playOrderAlertSound();
+            showToast("🔔 New Customer Order!", `Order #${order.id} from ${order.customerName} (₹${order.total})`);
+
+            if (currentView === 'user') {
+                document.getElementById('admin-pending-badge').classList.remove('hidden');
+            }
+
+            renderAdminOrders();
+            updateAdminMetrics();
+        }
+
+        // ==========================================
+        // ADMIN ORDERS LIST
+        // ==========================================
+        function renderAdminOrders() {
+            const container = document.getElementById('orders-feed-container');
+            const countBadge = document.getElementById('active-orders-count');
+            
+            const activeOrders = ordersHistory.filter(o => o.status !== 'COMPLETED');
+            countBadge.textContent = `${activeOrders.length} Active`;
+
+            if (ordersHistory.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400 space-y-2">
+                        <div class="text-3xl">📥</div>
+                        <p class="font-bold text-slate-600">No customer orders yet</p>
+                        <p class="text-xs">When users place orders on the shop page, they will appear here with an audio chime alert!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = ordersHistory.map(order => {
+                const statusBadge = order.status === 'NEW'
+                    ? '<span class="bg-rose-100 text-rose-800 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center space-x-1"><span class="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping"></span><span>NEW ORDER</span></span>'
+                    : order.status === 'PREPARING'
+                    ? '<span class="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full">PREPARING</span>'
+                    : '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">COMPLETED</span>';
+
+                const itemsSummary = order.items.map(i => `
+                    <div class="text-[11px] text-slate-700 flex justify-between">
+                        <span>• ${i.qty}x ${i.name} (Size: ${i.size || 'Std'})</span>
+                        <span class="font-bold">₹${i.price * i.qty}</span>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="p-3.5 rounded-xl border ${order.status === 'NEW' ? 'border-amber-400 bg-amber-50/40 shadow-sm' : 'border-slate-200 bg-white'} space-y-2">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-black text-slate-900 text-xs">#${order.id}</span>
+                                    ${statusBadge}
+                                </div>
+                                <p class="text-xs font-bold text-slate-700 mt-0.5">👤 ${order.customerName} <span class="text-slate-400 font-normal">(${order.customerPhone})</span></p>
+                                <p class="text-[10px] text-slate-400">${order.orderType} • ${order.displayTime}, ${order.displayDate}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-base font-black text-amber-600">₹${order.total}</span>
+                                <p class="text-[10px] text-slate-400">${order.totalQty} pair${order.totalQty === 1 ? '' : 's'}</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white/80 p-2 rounded-lg border border-slate-100 space-y-1">
+                            ${itemsSummary}
+                        </div>
+
+                        <div class="flex items-center justify-end space-x-2 pt-1">
+                            <button onclick="printOrderSlip('${order.id}')" class="text-xs font-bold text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 bg-white shadow-xs">
+                                🖨️ Slip
+                            </button>
+                            ${order.status === 'NEW' ? `
+                                <button onclick="updateOrderStatus('${order.id}', 'PREPARING')" class="text-xs font-extrabold text-amber-900 bg-amber-400 hover:bg-amber-300 px-3 py-1 rounded-lg shadow-xs">
+                                    Accept & Pack
+                                </button>
+                            ` : ''}
+                            ${order.status !== 'COMPLETED' ? `
+                                <button onclick="updateOrderStatus('${order.id}', 'COMPLETED')" class="text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded-lg shadow-xs">
+                                    Mark Done & Paid
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateOrderStatus(orderId, newStatus) {
+            const order = ordersHistory.find(o => o.id === orderId);
+            if (order) {
+                order.status = newStatus;
+                localStorage.setItem('take250_orders_v3', JSON.stringify(ordersHistory));
+                renderAdminOrders();
+                updateAdminMetrics();
+                showToast("Order Updated", `Order #${orderId} marked as ${newStatus}`);
+            }
+        }
+
+        function clearAllOrders() {
+            if (confirm("Are you sure you want to clear order history?")) {
+                ordersHistory = [];
+                localStorage.setItem('take250_orders_v3', JSON.stringify([]));
+                renderAdminOrders();
+                updateAdminMetrics();
+            }
+        }
+
+        function printOrderSlip(orderId) {
+            const order = ordersHistory.find(o => o.id === orderId);
+            if (!order) return;
+            const details = document.getElementById('receipt-details');
+            const grandTotal = document.getElementById('receipt-grand-total');
+
+            grandTotal.textContent = `₹${order.total}`;
+            details.innerHTML = `
+                <div class="flex justify-between font-bold text-slate-800">
+                    <span>Order: #${order.id}</span>
+                    <span>${order.displayTime}</span>
+                </div>
+                <div class="text-[11px] text-slate-500">Customer: ${order.customerName} (${order.customerPhone})</div>
+                <div class="text-[11px] text-slate-400 mb-2">Type: ${order.orderType} • ${order.displayDate}</div>
+                <div class="border-t border-slate-200 pt-1.5 space-y-1">
+                    ${order.items.map(i => `
+                        <div class="flex justify-between py-0.5">
+                            <span>${i.qty}x ${i.name} (Size: ${i.size})</span>
+                            <span class="font-bold">₹${i.price * i.qty}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="flex justify-between border-t border-slate-200 pt-1 text-slate-600 font-semibold">
+                    <span>Total Pairs:</span>
+                    <span>${order.totalQty}</span>
+                </div>
+            `;
+            document.getElementById('printable-receipt-modal').classList.remove('hidden');
+        }
+
+        function simulateCustomerOrder() {
+            const randomP = products[Math.floor(Math.random() * products.length)];
+            const randomSize = randomP.sizes[Math.floor(Math.random() * randomP.sizes.length)];
+            const randomQty = Math.floor(Math.random() * 2) + 1;
+            const names = ['Rohan Verma', 'Pooja Patel', 'Amit Nair', 'Sneha Roy', 'Vikram Singh'];
+            const randomName = names[Math.floor(Math.random() * names.length)];
+
+            const simOrder = {
+                id: 'T250-' + Math.floor(1000 + Math.random() * 9000),
+                customerName: randomName,
+                customerPhone: '98' + Math.floor(10000000 + Math.random() * 90000000),
+                orderType: Math.random() > 0.5 ? 'Store Pickup' : 'Home Delivery',
+                items: [{
+                    id: randomP.id,
+                    name: randomP.name,
+                    image: randomP.image,
+                    price: randomP.price,
+                    size: randomSize,
+                    qty: randomQty
+                }],
+                total: randomP.price * randomQty,
+                totalQty: randomQty,
+                status: 'NEW',
+                timestamp: new Date().toISOString(),
+                displayTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                displayDate: new Date().toLocaleDateString()
+            };
+
+            ordersHistory.unshift(simOrder);
+            localStorage.setItem('take250_orders_v3', JSON.stringify(ordersHistory));
+            handleIncomingOrderEvent(simOrder);
+        }
+
+        function updateAdminMetrics() {
+            const today = new Date().toISOString().slice(0, 10);
+            const thisMonth = new Date().toISOString().slice(0, 7);
+
+            let todayRev = 0;
+            let monthRev = 0;
+            let todayOrders = 0;
+            let todayPairs = 0;
+
+            ordersHistory.forEach(o => {
+                const datePrefix = o.timestamp ? o.timestamp.slice(0, 10) : '';
+                const monthPrefix = o.timestamp ? o.timestamp.slice(0, 7) : '';
+
+                if (monthPrefix === thisMonth) monthRev += o.total;
+                if (datePrefix === today) {
+                    todayRev += o.total;
+                    todayOrders += 1;
+                    todayPairs += o.totalQty || 1;
+                }
+            });
+
+            document.getElementById('admin-metric-revenue').textContent = `₹${todayRev}`;
+            document.getElementById('admin-metric-orders').textContent = todayOrders;
+            document.getElementById('admin-metric-pairs').textContent = todayPairs;
+            document.getElementById('admin-metric-monthly').textContent = `₹${monthRev}`;
+        }
+/**
+ * Generates and triggers a 100% free UPI / GPay Intent
+ * @param {string} orderId - e.g. "ORD-9481"
+ * @param {number} amount - e.g. 250 or 500
+ */
+function launchGPayPayment(orderId, amount) {
+    // 1. Retrieve the store's configured UPI ID (or phone fallback)
+    const upiId = localStorage.getItem('take250_shop_upi_id') || 
+                 (localStorage.getItem('take250_shop_gpay_mobile') + '@upi');
+    const storeName = "TAKE 250";
+    const note = `Order ${orderId}`;
+
+    if (!upiId || upiId === '@upi') {
+        alert("Store UPI ID is not configured yet in Admin Settings.");
+        return;
+    }
+
+    // 2. Build the standard NPCI UPI Intent URI
+    const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}` +
+                   `&pn=${encodeURIComponent(storeName)}` +
+                   `&tn=${encodeURIComponent(note)}` +
+                   `&am=${parseFloat(amount).toFixed(2)}` +
+                   `&cu=INR`;
+
+    // 3. Detect device:
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isMobile) {
+        // Tapping this on mobile triggers GPay/PhonePe/Paytm
+        window.location.href = upiUri;
+    } else {
+        // On desktop, display the QR code instead (laptop browsers cannot launch UPI apps)
+        showDesktopQrModal(upiUri, amount);
+    }
+}
+        // =========================================================
+        // PRODUCT MANAGEMENT WITH IMAGE ADD / REMOVE
+        // =========================================================
+        function renderAdminProductsTable() {
+            const tbody = document.getElementById('admin-products-table-body');
+            document.getElementById('admin-products-count-badge').textContent = products.length;
+
+            if (products.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-400">
+                            No slippers in catalog. Click "+ Add Slipper With Photo" or "Reset Defaults".
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = products.map(p => {
+                const thumb = p.image 
+                    ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl border border-slate-200" alt="${p.name}">`
+                    : `<div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-xl">🩴</div>`;
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-3 font-bold text-slate-800">
+                            <div class="flex items-center space-x-3">
+                                ${thumb}
+                                <div>
+                                    <p class="font-extrabold text-slate-900 leading-snug">${p.name}</p>
+                                    <span class="text-[10px] bg-amber-50 text-amber-800 border border-amber-200/60 font-black px-1.5 py-0.2 rounded">${p.badge || 'Flat ₹250'}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3 font-semibold text-slate-600 uppercase text-[11px]">${p.category}</td>
+                        <td class="py-3">
+                            <div class="flex flex-wrap gap-1">
+                                ${p.sizes.map(s => `<span class="bg-slate-100 text-slate-700 font-bold px-1.5 py-0.5 rounded text-[10px]">${s}</span>`).join('')}
+                            </div>
+                        </td>
+                        <td class="py-3 font-black text-amber-600 text-sm">₹${p.price}</td>
+                        <td class="py-3 text-right">
+                            <button onclick="removeProduct(${p.id})" title="Remove product" class="text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg font-bold text-xs transition-all border border-rose-200">
+                                🗑️ Remove
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openAddProductModal() {
+            uploadedImageBase64 = null;
+            document.getElementById('new-prod-img-url').value = '';
+            document.getElementById('image-preview-container').classList.add('hidden');
+            document.getElementById('add-product-modal').classList.remove('hidden');
+        }
+
+        function closeAddProductModal() {
+            document.getElementById('add-product-modal').classList.add('hidden');
+        }
+
+        function handleImageFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedImageBase64 = e.target.result;
+                const previewImg = document.getElementById('image-preview-el');
+                const previewContainer = document.getElementById('image-preview-container');
+                previewImg.src = uploadedImageBase64;
+                previewContainer.classList.remove('hidden');
+                document.getElementById('new-prod-img-url').value = '';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleImageUrlInput(event) {
+            const url = event.target.value.trim();
+            const previewImg = document.getElementById('image-preview-el');
+            const previewContainer = document.getElementById('image-preview-container');
+            if (url) {
+                uploadedImageBase64 = null;
+                previewImg.src = url;
+                previewContainer.classList.remove('hidden');
+            } else {
+                previewContainer.classList.add('hidden');
+            }
+        }
+
+        function handleSaveNewProduct(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-prod-name').value.trim();
+            const category = document.getElementById('new-prod-cat').value;
+            const price = parseFloat(document.getElementById('new-prod-price').value) || 250;
+            const badge = document.getElementById('new-prod-badge').value.trim() || 'New';
+            const sizesRaw = document.getElementById('new-prod-sizes').value;
+            const desc = document.getElementById('new-prod-desc').value.trim() || 'Premium comfort slipper';
+            const urlInput = document.getElementById('new-prod-img-url').value.trim();
+
+            const finalImage = uploadedImageBase64 || urlInput || 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=500&auto=format&fit=crop&q=80';
+
+            const sizes = sizesRaw.split(',')
+                .map(s => parseInt(s.trim()))
+                .filter(n => !isNaN(n));
+
+            const newProduct = {
+                id: Date.now(),
+                name: name,
+                category: category,
+                price: price,
+                badge: badge,
+                image: finalImage,
+                desc: desc,
+                sizes: sizes.length > 0 ? sizes : [6, 7, 8, 9, 10]
+            };
+
+            products.unshift(newProduct);
+            saveProducts();
+
+            closeAddProductModal();
+            document.getElementById('new-prod-name').value = '';
+            document.getElementById('new-prod-desc').value = '';
+
+            showToast("Product Added!", `"${name}" with image is now live in the store.`);
+        }
+
+        function removeProduct(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            if (confirm(`Are you sure you want to remove "${product.name}" from the store?`)) {
+                products = products.filter(p => p.id !== productId);
+                saveProducts();
+                showToast("Product Removed", `"${product.name}" has been removed from catalog.`);
+            }
+        }
+
+        function resetDefaultProducts() {
+            if (confirm("Reset catalog back to standard default slippers?")) {
+                products = [...DEFAULT_PRODUCTS];
+                saveProducts();
+                showToast("Catalog Reset", "Restored standard slipper models.");
+            }
+        }
+
+        function saveProducts() {
+            localStorage.setItem('take250_products_v3', JSON.stringify(products));
+            commChannel.postMessage({ type: 'PRODUCTS_UPDATED' });
+            renderUserProducts();
+            renderAdminProductsTable();
+        }
+
+        // ==========================================
+        // TOAST NOTIFICATIONS
+        // ==========================================
+        function showToast(title, message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-white border-l-4 border-amber-500 shadow-2xl rounded-2xl p-4 w-80 transform transition-all duration-300 translate-x-full opacity-0 pointer-events-auto flex flex-col';
+            toast.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <h4 class="text-amber-900 font-black text-xs flex items-center space-x-1.5">
+                        <span>🔔</span>
+                        <span>${title}</span>
+                    </h4>
+                </div>
+                <p class="text-xs text-slate-600 mt-1 font-medium leading-relaxed">${message}</p>
+            `;
+            container.appendChild(toast);
+            
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 350);
+            }, 3500);
+        }
+
+        // ==========================================
+        // ROUTING & INITIALIZATION
+        // ==========================================
+        function checkUrlRoute() {
+            const hash = window.location.hash.toLowerCase();
+            const path = window.location.pathname.toLowerCase();
+            if (hash.includes('admin') || path.includes('admin')) {
+                if (isAdminLoggedIn) {
+                    switchView('admin');
+                } else {
+                    switchView('user');
+                    openAdminLoginModal();
+                }
+            } else {
+                switchView('user');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderUserProducts();
+            renderAdminOrders();
+            renderAdminProductsTable();
+            updateAdminMetrics();
+            updateUserCartUI();
+            updateUserAuthUI();
+
+            checkUrlRoute();
+
+            // Fetch live catalog and settings from Vercel Backend
+            fetch('/api/products')
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.success && Array.isArray(data.products) && data.products.length > 0) {
+                        products = data.products;
+                        localStorage.setItem('take250_products_v3', JSON.stringify(products));
+                        renderUserProducts();
+                        renderAdminProductsTable();
+                    }
+                }).catch(() => {});
+
+            fetch('/api/settings')
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.success && data.settings) {
+                        if (data.settings.gpayMobile) localStorage.setItem('take250_shop_gpay_mobile', data.settings.gpayMobile);
+                        if (data.settings.qrCode) localStorage.setItem('take250_shop_qr_code', data.settings.qrCode);
+                    }
+                }).catch(() => {});
+        });
+
+        window.addEventListener('hashchange', checkUrlRoute);
+    </script>
+</body>
+</html>

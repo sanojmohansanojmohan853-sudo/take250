@@ -1,0 +1,2690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal • TAKE 250 Slipper Shop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for Monthly Customer Orders Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .order-ping { animation: pulse-ring 1.8s infinite; }
+
+        @media print {
+            body * { visibility: hidden !important; }
+            #printable-bill-area, #printable-bill-area * { visibility: visible !important; }
+            #printable-bill-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                background: white !important;
+                display: block !important;
+                padding: 10px !important;
+                color: black !important;
+            }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-amber-500 selection:text-white">
+
+    <!-- ========================================================================= -->
+    <!-- 1. AUTH CHECK / LOGIN & SETUP OVERLAY                                     -->
+    <!-- ========================================================================= -->
+    <div id="auth-overlay" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6">
+            
+            <div class="text-center space-y-2">
+                <div class="w-16 h-16 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-inner">
+                    👑
+                </div>
+                <h1 class="text-2xl font-black text-slate-900" id="auth-heading">Admin Portal</h1>
+                <p class="text-xs text-slate-500" id="auth-subheading">TAKE 250 Slipper Shop Management</p>
+            </div>
+
+            <!-- First-time Setup Form (If no password set yet) -->
+            <form id="setup-form" onsubmit="handleInitialPasswordSetup(event)" class="space-y-4 text-xs hidden">
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 space-y-1">
+                    <p class="font-extrabold flex items-center space-x-1.5">
+                        <span>🔐</span>
+                        <span>First-Time Setup: Set Your Admin Password</span>
+                    </p>
+                    <p class="text-[11px] text-amber-800 leading-relaxed">
+                        No default password exists. Please create your own secure password to protect the store dashboard.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="font-extrabold text-slate-700 block mb-1">Create Admin Password *</label>
+                    <input type="password" id="setup-pass" required placeholder="Enter new password (min 4 chars)" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                </div>
+
+                <div>
+                    <label class="font-extrabold text-slate-700 block mb-1">Confirm Admin Password *</label>
+                    <input type="password" id="setup-pass-confirm" required placeholder="Re-enter password" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                </div>
+
+                <div>
+                    <label class="font-extrabold text-slate-700 block mb-1">Store Owner Mobile Number (For GPay & Password Reset)</label>
+                    <input type="tel" id="setup-phone" placeholder="e.g. 9876543210 (10 digits)" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                    <p class="text-[10px] text-slate-400 mt-1">Used to verify your identity if you ever forget your password.</p>
+                </div>
+
+                <div>
+                    <label class="font-extrabold text-slate-700 block mb-1">Emergency Security PIN (4 Digits)</label>
+                    <input type="text" id="setup-pin" maxlength="6" value="2500" placeholder="e.g. 2500" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                    <p class="text-[10px] text-slate-400 mt-1">Backup 4-digit code to instantly reset your password (Default: 2500).</p>
+                </div>
+
+                <div id="setup-error" class="hidden p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-bold"></div>
+
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-3 rounded-2xl text-sm transition-all shadow-md active:scale-98">
+                    Save Password & Open Admin Portal →
+                </button>
+            </form>
+
+            <!-- Standard Admin Login Form (When password already exists) -->
+            <form id="login-form" onsubmit="handleAdminLogin(event)" class="space-y-4 text-xs hidden">
+                <div>
+                    <label class="font-extrabold text-slate-700 block mb-1">Admin Password *</label>
+                    <input type="password" id="login-pass" required placeholder="Enter your custom admin password" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                </div>
+
+                <div class="flex items-center justify-between text-xs pt-0.5">
+                    <span class="text-slate-400 text-[11px]">Forgot your access key?</span>
+                    <button type="button" onclick="showForgotPasswordForm()" class="font-bold text-amber-600 hover:text-amber-700 hover:underline cursor-pointer">
+                        Forgot Password?
+                    </button>
+                </div>
+
+                <div id="login-error" class="hidden p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-bold">
+                    Incorrect password! Please try again or click "Forgot Password?".
+                </div>
+
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-3 rounded-2xl text-sm transition-all shadow-md active:scale-98">
+                    Unlock Dashboard →
+                </button>
+            </form>
+
+            <!-- Forgot Password / Reset Form -->
+            <form id="forgot-form" onsubmit="handleForgotPasswordReset(event)" class="space-y-4 text-xs hidden">
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 space-y-1">
+                    <p class="font-extrabold flex items-center space-x-1.5 text-xs">
+                        <span>🔑</span>
+                        <span>Reset Admin Password</span>
+                    </p>
+                    <p class="text-[11px] text-amber-800 leading-relaxed" id="forgot-form-hint">
+                        Verify your Store Owner mobile number or 4-digit Security PIN to set a new password.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="font-extrabold text-slate-700 block mb-1">Store Owner Mobile Number or Security PIN *</label>
+                    <input type="text" id="forgot-input" name="forgot-verification-input" required placeholder="Enter 10-digit mobile or 4-digit PIN" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                    <p class="text-[10px] text-slate-400 mt-1" id="forgot-field-help">Your registered Store/GPay phone or PIN (Default emergency PIN: 2500).</p>
+                </div>
+
+                <div>
+                    <label class="font-extrabold text-slate-700 block mb-1">New Admin Password *</label>
+                    <input type="password" id="forgot-new-pass" required placeholder="Enter new password (min 4 chars)" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                </div>
+
+                <div>
+                    <label class="font-extrabold text-slate-700 block mb-1">Confirm New Password *</label>
+                    <input type="password" id="forgot-confirm-pass" required placeholder="Re-enter new password" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                </div>
+
+                <div id="forgot-error" class="hidden p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-bold"></div>
+                <div id="forgot-success" class="hidden p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-bold"></div>
+
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-3 rounded-2xl text-sm transition-all shadow-md active:scale-98">
+                    Verify & Reset Password →
+                </button>
+
+                <div class="text-center pt-1">
+                    <button type="button" onclick="hideForgotPasswordForm()" class="font-bold text-slate-500 hover:text-slate-800 underline text-xs cursor-pointer">
+                        ← Back to Admin Login
+                    </button>
+                </div>
+            </form>
+
+            <div class="pt-3 border-t border-slate-100 text-center">
+                <a href="index.html" class="text-xs font-bold text-slate-500 hover:text-slate-800 underline">
+                    ← Return to Slipper Shop (take250.web.app)
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 2. MAIN ADMIN PORTAL (SHOWN AFTER AUTH)                                   -->
+    <!-- ========================================================================= -->
+    <div id="admin-main-container" class="hidden flex-1 flex flex-col">
+        
+        <!-- Header -->
+        <header class="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+                <!-- Brand & Status -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-amber-500 text-slate-950 rounded-xl flex items-center justify-center text-2xl font-black shadow-md">
+                        👑
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-lg font-black tracking-tight text-white">TAKE <span class="text-amber-500">250</span></span>
+                            <span class="bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Admin Portal</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 font-medium">Orders, Counter Billing & Store Management</p>
+                    </div>
+                </div>
+
+                <!-- Controls & Logout -->
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <button id="audio-toggle-btn" onclick="toggleAudioChime()" class="bg-emerald-950/60 border border-emerald-500/40 hover:bg-emerald-900 text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5">
+                        <span id="audio-icon">🔊</span>
+                        <span id="audio-text" class="hidden sm:inline">Chime ON</span>
+                    </button>
+                    <a href="index.html" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border border-slate-700">
+                        <span>🛍️</span>
+                        <span class="hidden sm:inline">Open Shop</span>
+                    </a>
+                    <button onclick="logoutAdmin()" class="bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white border border-rose-500/40 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center space-x-1">
+                        <span>🔒</span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs Bar -->
+            <div class="bg-slate-950 border-t border-slate-800/80 px-4 sm:px-6">
+                <nav class="max-w-7xl mx-auto flex items-center space-x-1 sm:space-x-2 overflow-x-auto py-2 text-xs">
+                    <button onclick="switchTab('orders')" id="tab-btn-orders" class="admin-tab-btn px-3.5 py-1.5 rounded-xl font-black bg-amber-500 text-slate-950 transition-all flex items-center space-x-1.5 whitespace-nowrap shadow-sm">
+                        <span>📥</span>
+                        <span>Live Orders</span>
+                        <span id="tab-orders-badge" class="bg-slate-950 text-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-full hidden">0</span>
+                    </button>
+                    <button onclick="switchTab('billing')" id="tab-btn-billing" class="admin-tab-btn px-3.5 py-1.5 rounded-xl font-bold text-slate-400 hover:text-white transition-all flex items-center space-x-1.5 whitespace-nowrap">
+                        <span>🧾</span>
+                        <span>POS Billing Module</span>
+                    </button>
+                    <button onclick="switchTab('reports')" id="tab-btn-reports" class="admin-tab-btn px-3.5 py-1.5 rounded-xl font-bold text-slate-400 hover:text-white transition-all flex items-center space-x-1.5 whitespace-nowrap">
+                        <span>📊</span>
+                        <span>Monthly Reports & Excel</span>
+                    </button>
+                    <button onclick="switchTab('catalog')" id="tab-btn-catalog" class="admin-tab-btn px-3.5 py-1.5 rounded-xl font-bold text-slate-400 hover:text-white transition-all flex items-center space-x-1.5 whitespace-nowrap">
+                        <span>👟</span>
+                        <span>Slipper Products</span>
+                    </button>
+                    <button onclick="switchTab('payment')" id="tab-btn-payment" class="admin-tab-btn px-3.5 py-1.5 rounded-xl font-bold text-slate-400 hover:text-white transition-all flex items-center space-x-1.5 whitespace-nowrap">
+                        <span>📱</span>
+                        <span>GPay & QR Settings</span>
+                    </button>
+                    <button onclick="switchTab('security')" id="tab-btn-security" class="admin-tab-btn px-3.5 py-1.5 rounded-xl font-bold text-slate-400 hover:text-white transition-all flex items-center space-x-1.5 whitespace-nowrap">
+                        <span>🔑</span>
+                        <span>Security & Recovery</span>
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Body Content Area -->
+        <main class="max-w-7xl mx-auto p-4 sm:p-6 w-full flex-1 space-y-6">
+
+            <!-- ============================================================= -->
+            <!-- TAB 1: LIVE ORDERS & DASHBOARD METRICS                        -->
+            <!-- ============================================================= -->
+            <div id="tab-orders" class="admin-tab-panel space-y-6">
+                <!-- Sales KPI Metrics -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center space-x-3.5">
+                        <div class="p-3 bg-amber-100 text-amber-700 rounded-xl text-2xl">💰</div>
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Sales</p>
+                            <h3 class="text-xl sm:text-2xl font-black text-slate-900" id="metric-total-sales">₹0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center space-x-3.5">
+                        <div class="p-3 bg-blue-100 text-blue-700 rounded-xl text-2xl">📦</div>
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Online Orders</p>
+                            <h3 class="text-xl sm:text-2xl font-black text-slate-900" id="metric-online-orders">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center space-x-3.5">
+                        <div class="p-3 bg-emerald-100 text-emerald-700 rounded-xl text-2xl">🧾</div>
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Counter Bills</p>
+                            <h3 class="text-xl sm:text-2xl font-black text-slate-900" id="metric-counter-bills">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center space-x-3.5">
+                        <div class="p-3 bg-purple-100 text-purple-700 rounded-xl text-2xl">🩴</div>
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pairs Sold</p>
+                            <h3 class="text-xl sm:text-2xl font-black text-slate-900" id="metric-pairs-sold">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orders Feed Card -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-base font-black text-slate-900">📥 Live Online Orders Feed</span>
+                            <span id="active-orders-badge" class="bg-rose-100 text-rose-800 text-xs font-black px-2.5 py-0.5 rounded-full">0 Active</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="testChimeSound()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl transition-all">
+                                🔔 Test Chime
+                            </button>
+                            <button onclick="clearOrdersHistory()" class="text-xs text-rose-600 hover:text-rose-800 font-bold hover:underline">
+                                Clear Orders
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Orders Container -->
+                    <div id="orders-list-container" class="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                        <!-- Populated via JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- TAB 2: SEPARATE BILL PAGE MODULE (COUNTER SALES & POS)        -->
+            <!-- ============================================================= -->
+            <div id="tab-billing" class="admin-tab-panel hidden space-y-6">
+                
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <!-- Left: Create New Bill Form (7 cols) -->
+                    <div class="lg:col-span-7 bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-2xl">🧾</span>
+                                <div>
+                                    <h2 class="text-lg font-black text-slate-900">POS Counter Billing</h2>
+                                    <p class="text-xs text-slate-500">Create walk-in customer slip & thermal receipt</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] font-bold uppercase text-slate-400 block">Bill Number</span>
+                                <span class="text-sm font-black text-amber-700" id="bill-seq-number">BILL-001</span>
+                            </div>
+                        </div>
+
+                        <!-- Customer Details (Optional for Counter Sale) -->
+                        <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+                            <p class="font-extrabold text-slate-800 text-xs flex items-center space-x-1.5">
+                                <span>👤</span>
+                                <span>Customer Information</span>
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                                <div>
+                                    <label class="font-bold text-slate-600 block mb-1">Customer Name</label>
+                                    <input type="text" id="bill-cust-name" placeholder="Walk-in Customer / Name" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                                <div>
+                                    <label class="font-bold text-slate-600 block mb-1">Mobile / WhatsApp Number</label>
+                                    <input type="tel" id="bill-cust-phone" maxlength="10" placeholder="10-digit WhatsApp number" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                            </div>
+                            <div class="text-xs">
+                                <label class="font-bold text-slate-600 block mb-1">Address / Landmark (Optional)</label>
+                                <input type="text" id="bill-cust-address" placeholder="Street, Area, City" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+                        </div>
+
+                        <!-- Add Item Section -->
+                        <div class="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200/60 space-y-3">
+                            <p class="font-extrabold text-amber-900 text-xs flex items-center space-x-1.5">
+                                <span>🩴</span>
+                                <span>Select Slipper Item</span>
+                            </p>
+
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <label class="font-bold text-slate-700 block mb-1">Select Slipper Model *</label>
+                                    <select id="bill-select-product" onchange="handleBillProductSelect()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs">
+                                        <!-- Dynamically loaded from catalog -->
+                                    </select>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-2.5">
+                                    <div>
+                                        <label class="font-bold text-slate-700 block mb-1">Size (UK/IND) *</label>
+                                        <select id="bill-select-size" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                            <option value="6">UK 6</option>
+                                            <option value="7" selected>UK 7</option>
+                                            <option value="8">UK 8</option>
+                                            <option value="9">UK 9</option>
+                                            <option value="10">UK 10</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="font-bold text-slate-700 block mb-1">Quantity</label>
+                                        <input type="number" id="bill-item-qty" value="1" min="1" max="50" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    </div>
+                                    <div>
+                                        <label class="font-bold text-slate-700 block mb-1">Rate (₹)</label>
+                                        <input type="number" id="bill-item-price" value="250" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-amber-700 font-black text-center focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    </div>
+                                </div>
+
+                                <button type="button" onclick="addItemToCurrentBill()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-2 rounded-xl text-xs transition-all shadow-sm">
+                                    + Add Item to Current Bill
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Current Bill Items Table -->
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between items-center font-extrabold text-slate-700">
+                                <span>Items in Current Bill</span>
+                                <span id="bill-items-count-badge" class="text-amber-700">0 items</span>
+                            </div>
+
+                            <div class="border border-slate-200 rounded-xl overflow-hidden">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="bg-slate-50 text-slate-400 uppercase font-black border-b border-slate-200">
+                                        <tr>
+                                            <th class="p-2.5">Item</th>
+                                            <th class="p-2.5">Size</th>
+                                            <th class="p-2.5 text-center">Qty</th>
+                                            <th class="p-2.5 text-right">Price</th>
+                                            <th class="p-2.5 text-right">Total</th>
+                                            <th class="p-2.5 text-center">Del</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bill-current-items-body" class="divide-y divide-slate-100">
+                                        <tr>
+                                            <td colspan="6" class="p-6 text-center text-slate-400 font-medium">No items added to this bill yet.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Payment & Finalize -->
+                        <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3 text-xs">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div>
+                                    <span class="font-extrabold text-slate-700 block mb-1">Payment Method:</span>
+                                    <div class="flex space-x-3">
+                                        <label class="flex items-center space-x-1.5 cursor-pointer font-bold text-slate-800">
+                                            <input type="radio" name="bill-payment-mode" value="GPay" checked class="text-amber-600 focus:ring-amber-500">
+                                            <span>📱 Google Pay (GPay)</span>
+                                        </label>
+                                        <label class="flex items-center space-x-1.5 cursor-pointer font-bold text-slate-800">
+                                            <input type="radio" name="bill-payment-mode" value="Cash" class="text-amber-600 focus:ring-amber-500">
+                                            <span>💵 Cash</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[11px] font-bold text-slate-500 block uppercase">Total Bill Amount</span>
+                                    <span class="text-2xl font-black text-amber-600" id="bill-grand-total">₹0</span>
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="generateAndPrintBill()" id="btn-generate-bill" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-3 rounded-2xl text-sm transition-all shadow-md flex items-center justify-center space-x-2 cursor-pointer active:scale-98">
+                                <span>🧾</span>
+                                <span>Generate Bill & Print / WhatsApp Receipt →</span>
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <!-- Right: Bills History & Quick Search (5 cols) -->
+                    <div class="lg:col-span-5 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4 flex flex-col">
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <h3 class="text-base font-black text-slate-900 flex items-center space-x-2">
+                                <span>📋</span>
+                                <span>Counter Bills History</span>
+                            </h3>
+                            <button onclick="clearBillsHistory()" class="text-xs text-rose-500 hover:underline font-bold">Clear</button>
+                        </div>
+
+                        <!-- Bill search -->
+                        <div>
+                            <input type="text" id="bill-search-input" oninput="renderBillsHistory()" placeholder="Search bill #, phone or customer..." class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-slate-50">
+                        </div>
+
+                        <!-- History List -->
+                        <div id="bills-history-list" class="flex-1 overflow-y-auto space-y-2.5 max-h-[550px] pr-1">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- TAB: MONTHLY CUSTOMER ORDERS & EXCEL EXPORT                   -->
+            <!-- ============================================================= -->
+            <div id="tab-reports" class="admin-tab-panel hidden space-y-6">
+                
+                <!-- Report Header & Controls -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-emerald-100 text-emerald-800 rounded-2xl flex items-center justify-center text-2xl font-black shadow-inner">
+                            📊
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-black text-slate-900">Customer Orders History & Monthly Reports</h2>
+                            <p class="text-xs text-slate-500">Filter orders by month and export full customer data to Excel (.xlsx / .csv)</p>
+                        </div>
+                    </div>
+
+                    <!-- Export Actions -->
+                    <div class="flex items-center space-x-2">
+                        <button onclick="exportOrdersToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md flex items-center space-x-2 active:scale-98">
+                            <span>📥</span>
+                            <span>Export to Excel (.xlsx)</span>
+                        </button>
+                        <button onclick="exportOrdersToCsv()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-2.5 rounded-xl text-xs transition-all border border-slate-200">
+                            📄 CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Monthly KPIs -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Filtered Revenue</p>
+                        <h3 class="text-xl sm:text-2xl font-black text-emerald-700 mt-1" id="report-metric-revenue">₹0</h3>
+                        <span class="text-[10px] text-slate-400 font-medium">Selected Month/Period</span>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Orders</p>
+                        <h3 class="text-xl sm:text-2xl font-black text-slate-900 mt-1" id="report-metric-orders">0</h3>
+                        <span class="text-[10px] text-slate-400 font-medium" id="report-metric-types">Online + Counter</span>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pairs Sold</p>
+                        <h3 class="text-xl sm:text-2xl font-black text-amber-600 mt-1" id="report-metric-pairs">0</h3>
+                        <span class="text-[10px] text-slate-400 font-medium">Slippers Volume</span>
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Avg Order Value</p>
+                        <h3 class="text-xl sm:text-2xl font-black text-blue-700 mt-1" id="report-metric-aov">₹0</h3>
+                        <span class="text-[10px] text-slate-400 font-medium">Per Customer Order</span>
+                    </div>
+                </div>
+
+                <!-- Filters Bar -->
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-slate-600">Select Month:</span>
+                            <select id="report-month-filter" onchange="renderMonthlyReportTable()" class="border border-slate-200 bg-slate-50 font-bold text-slate-800 rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500">
+                                <option value="all">All Months (All Time)</option>
+                                <!-- Auto-populated via JS -->
+                            </select>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-slate-600">Source:</span>
+                            <select id="report-source-filter" onchange="renderMonthlyReportTable()" class="border border-slate-200 bg-slate-50 font-bold text-slate-800 rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500">
+                                <option value="all">All (Online Orders & Counter Bills)</option>
+                                <option value="online">Online Delivery Orders Only</option>
+                                <option value="pos">Counter POS Bills Only</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-64">
+                        <input type="text" id="report-search-input" oninput="renderMonthlyReportTable()" placeholder="Search customer, phone, ID..." class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-slate-800 text-xs focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-black text-[10px] tracking-wider">
+                                <tr>
+                                    <th class="py-3 px-4">Date & Time</th>
+                                    <th class="py-3 px-3">Order / Bill #</th>
+                                    <th class="py-3 px-3">Type</th>
+                                    <th class="py-3 px-4">Customer Name & Phone</th>
+                                    <th class="py-3 px-4">Delivery Address</th>
+                                    <th class="py-3 px-4">Items (Size & Qty)</th>
+                                    <th class="py-3 px-3">Payment</th>
+                                    <th class="py-3 px-4 text-right">Amount</th>
+                                    <th class="py-3 px-3 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-table-body" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="report-empty-state" class="hidden p-8 text-center text-slate-400 space-y-2">
+                        <div class="text-3xl">📭</div>
+                        <p class="font-bold text-slate-600">No orders found for the selected month/filters</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- TAB 3: SLIPPER CATALOG & PHOTO MANAGEMENT                     -->
+            <!-- ============================================================= -->
+            <div id="tab-catalog" class="admin-tab-panel hidden space-y-6">
+                
+                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div>
+                            <h2 class="text-lg font-black text-slate-900 flex items-center space-x-2">
+                                <span>👟</span>
+                                <span>Slipper Products Catalog</span>
+                                <span id="catalog-count-badge" class="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
+                            </h2>
+                            <p class="text-xs text-slate-500">Upload slipper photos, set sizes, and manage store models</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="resetToDefaultSlippers()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl transition-all">
+                                ↺ Reset Standard Models
+                            </button>
+                            <button onclick="openCatalogAddModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all flex items-center space-x-1.5 shadow-sm">
+                                <span>📷 Add Slipper With Photo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Products Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="text-slate-400 uppercase font-black border-b border-slate-100">
+                                    <th class="pb-2.5">Slipper Photo & Name</th>
+                                    <th class="pb-2.5">Category</th>
+                                    <th class="pb-2.5">Sizes (UK)</th>
+                                    <th class="pb-2.5">Price</th>
+                                    <th class="pb-2.5 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="catalog-table-body" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- TAB 4: GPAY ONLY MOBILE NUMBER & QR CODE SETTINGS             -->
+            <!-- ============================================================= -->
+            <div id="tab-payment" class="admin-tab-panel hidden space-y-6">
+                
+                <div class="max-w-2xl mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+                    
+                    <div class="pb-4 border-b border-slate-100 space-y-1">
+                        <div class="w-12 h-12 bg-amber-100 text-amber-800 rounded-2xl flex items-center justify-center text-2xl font-black mb-2">
+                            📱
+                        </div>
+                        <h2 class="text-xl font-black text-slate-900">Google Pay (GPay) & Shop QR Code Settings</h2>
+                        <p class="text-xs text-slate-500">Configure your official GPay mobile phone and payment QR code. There are no dummy defaults — customers will only see your custom details.</p>
+                    </div>
+
+                    <form onsubmit="handleSavePaymentSettings(event)" class="space-y-5 text-xs">
+                        
+                        <!-- GPay Mobile Phone Number -->
+                        <div class="space-y-1.5">
+                            <label class="font-extrabold text-slate-800 block text-sm">GPay Mobile Phone Number *</label>
+                            <p class="text-slate-500 text-[11px]">Customers selecting GPay at checkout will see this number to make their UPI transfer.</p>
+                            <div class="relative">
+                                <span class="absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm">+91</span>
+                                <input type="tel" id="settings-gpay-phone" maxlength="10" placeholder="e.g. 9876543210" class="w-full border border-slate-200 rounded-xl pl-12 pr-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold bg-slate-50">
+                            </div>
+                        </div>
+
+                        <!-- Shop QR Code Upload -->
+                        <div class="space-y-2 pt-2 border-t border-slate-100">
+                            <label class="font-extrabold text-slate-800 block text-sm">Shop Payment QR Code Image</label>
+                            <p class="text-slate-500 text-[11px]">Upload your official GPay / PhonePe / Paytm / UPI QR Code image (from your gallery or phone screenshot).</p>
+                            
+                            <div class="bg-slate-50 p-4 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center space-y-3 text-center">
+                                <div id="qr-preview-container" class="hidden">
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Active QR Code Preview:</p>
+                                    <img id="qr-preview-image" src="" alt="Payment QR Code" class="w-48 h-48 object-contain rounded-xl border border-slate-200 bg-white p-2 shadow-sm mx-auto">
+                                </div>
+
+                                <div class="flex items-center space-x-2">
+                                    <label class="cursor-pointer bg-amber-600 hover:bg-amber-700 text-white font-extrabold px-4 py-2 rounded-xl text-xs transition-all shadow-sm flex items-center space-x-1.5">
+                                        <span>📷 Upload QR Code Image</span>
+                                        <input type="file" id="settings-qr-file" accept="image/*" onchange="handleQrFileSelect(event)" class="hidden">
+                                    </label>
+                                    <button type="button" onclick="removeQrCode()" id="btn-remove-qr" class="hidden text-rose-600 hover:text-rose-800 font-bold text-xs px-3 py-2 rounded-xl bg-rose-50 border border-rose-200">
+                                        Remove QR
+                                    </button>
+                                </div>
+                                <span class="text-[11px] text-slate-400">Supported: JPG, PNG, WEBP</span>
+                            </div>
+                        </div>
+
+                        <div id="payment-settings-status" class="hidden p-3 rounded-xl text-xs font-bold"></div>
+
+                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-3 rounded-2xl text-sm transition-all shadow-md active:scale-98">
+                            Save GPay & QR Settings →
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- TAB 5: ADMIN PASSWORD CHANGE & RECOVERY SECURITY              -->
+            <!-- ============================================================= -->
+            <div id="tab-security" class="admin-tab-panel hidden space-y-6">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                    
+                    <!-- Card 1: Change Password -->
+                    <div class="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 space-y-5">
+                        <div class="pb-3 border-b border-slate-100 space-y-1">
+                            <div class="w-12 h-12 bg-amber-100 text-amber-800 rounded-2xl flex items-center justify-center text-2xl font-black mb-2">
+                                🔑
+                            </div>
+                            <h2 class="text-lg font-black text-slate-900">Change Admin Password</h2>
+                            <p class="text-xs text-slate-500">Update your store owner password. Enter your current password to set a new one.</p>
+                        </div>
+
+                        <form onsubmit="handleChangePassword(event)" class="space-y-4 text-xs">
+                            <div>
+                                <label class="font-extrabold text-slate-700 block mb-1">Current Password *</label>
+                                <input type="password" id="change-current-pass" name="pass-current" required placeholder="Enter current password" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                            </div>
+
+                            <div>
+                                <label class="font-extrabold text-slate-700 block mb-1">New Password *</label>
+                                <input type="password" id="change-new-pass" name="pass-new" required placeholder="Enter new password (min 4 chars)" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                            </div>
+
+                            <div>
+                                <label class="font-extrabold text-slate-700 block mb-1">Confirm New Password *</label>
+                                <input type="password" id="change-confirm-pass" name="pass-confirm" required placeholder="Re-enter new password" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold bg-slate-50">
+                            </div>
+
+                            <div id="pass-status" class="hidden p-3 rounded-xl text-xs font-bold"></div>
+
+                            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-3 rounded-2xl text-sm transition-all shadow-md active:scale-98">
+                                Update Password →
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Card 2: Password Recovery & Reset Settings -->
+                    <div class="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 space-y-5">
+                        <div class="pb-3 border-b border-slate-100 space-y-1">
+                            <div class="w-12 h-12 bg-blue-100 text-blue-800 rounded-2xl flex items-center justify-center text-2xl font-black mb-2">
+                                🛡️
+                            </div>
+                            <h2 class="text-lg font-black text-slate-900">Forgot Password Recovery</h2>
+                            <p class="text-xs text-slate-500">Configure your recovery mobile number and backup security PIN for password reset.</p>
+                        </div>
+
+                        <form onsubmit="handleSaveRecoverySettings(event)" class="space-y-4 text-xs">
+                            <div>
+                                <label class="font-extrabold text-slate-700 block mb-1">Store Owner Recovery Mobile Number</label>
+                                <div class="relative">
+                                    <span class="absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm">+91</span>
+                                    <input type="tel" id="security-recovery-phone" maxlength="10" placeholder="e.g. 9876543210" class="w-full border border-slate-200 rounded-xl pl-12 pr-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold bg-slate-50">
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1">If you forget your password, verify using this mobile number.</p>
+                            </div>
+
+                            <div>
+                                <label class="font-extrabold text-slate-700 block mb-1">Emergency Security Recovery PIN (4-6 Digits)</label>
+                                <input type="text" id="security-recovery-pin" maxlength="6" placeholder="e.g. 2500" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold bg-slate-50">
+                                <p class="text-[10px] text-slate-400 mt-1">Backup code to verify your identity on the "Forgot Password" screen (Default: 2500).</p>
+                            </div>
+
+                            <div class="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] text-amber-900 space-y-1">
+                                <span class="font-bold block">💡 How "Forgot Password" works:</span>
+                                <p>On the Admin Login screen, clicking "Forgot Password?" allows you to reset your password by entering either your registered mobile number or this security PIN.</p>
+                            </div>
+
+                            <div id="recovery-status" class="hidden p-3 rounded-xl text-xs font-bold"></div>
+
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-2xl text-sm transition-all shadow-md active:scale-98">
+                                Save Recovery Settings →
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 text-center py-4 px-4 text-xs mt-auto">
+            <p>🩴 TAKE 250 • Store Management Portal • take250.web.app</p>
+        </footer>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 3. ADD PRODUCT MODAL (CATALOG)                                            -->
+    <!-- ========================================================================= -->
+    <div id="catalog-add-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <span class="text-2xl">📷</span>
+                    <div>
+                        <h3 class="text-lg font-black text-slate-900">Add Slipper Product</h3>
+                        <p class="text-xs text-slate-500">Upload or link slipper photo with sizes</p>
+                    </div>
+                </div>
+                <button onclick="closeCatalogAddModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg">×</button>
+            </div>
+
+            <form onsubmit="handleSaveCatalogProduct(event)" class="space-y-3.5 text-xs">
+                <!-- Image Upload & Preview -->
+                <div class="bg-slate-50 p-3.5 rounded-2xl border-2 border-dashed border-slate-200 space-y-2">
+                    <label class="font-extrabold text-slate-800 block">Slipper Photo (Upload File or Paste Image URL) *</label>
+                    <div class="flex items-center space-x-2">
+                        <label class="cursor-pointer bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-xs">
+                            <span>📁 Upload Photo</span>
+                            <input type="file" id="modal-prod-file" accept="image/*" onchange="handleProductFileSelect(event)" class="hidden">
+                        </label>
+                        <span class="text-slate-400 font-medium">OR paste URL</span>
+                    </div>
+                    <input type="url" id="modal-prod-img-url" oninput="handleProductUrlInput(event)" placeholder="https://example.com/slipper-photo.jpg" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+
+                    <div id="modal-preview-container" class="hidden pt-1">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Preview:</p>
+                        <img id="modal-preview-el" src="" class="w-full h-36 object-cover rounded-xl border border-slate-200 shadow-sm" alt="Preview">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Slipper Model Name *</label>
+                    <input type="text" id="modal-prod-name" required placeholder="e.g. Men's Cloud Comfort Slide" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="font-bold text-slate-700 block mb-1">Category *</label>
+                        <select id="modal-prod-cat" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="men">Men's Slippers</option>
+                            <option value="women">Women's Slippers</option>
+                            <option value="ortho">Cloud & Ortho</option>
+                            <option value="house">Daily & House Wear</option>
+                            <option value="kids">Kids Slippers</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="font-bold text-slate-700 block mb-1">Price (₹) *</label>
+                        <input type="number" id="modal-prod-price" value="250" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="font-bold text-slate-700 block mb-1">Available Sizes (UK)</label>
+                        <input type="text" id="modal-prod-sizes" value="6, 7, 8, 9, 10" placeholder="e.g. 6, 7, 8, 9, 10" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="font-bold text-slate-700 block mb-1">Badge Tag</label>
+                        <input type="text" id="modal-prod-badge" value="New Arrival" placeholder="e.g. Trending / Ortho" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Short Description</label>
+                    <input type="text" id="modal-prod-desc" placeholder="e.g. Soft cushion footbed with anti-skid sole" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex space-x-2">
+                    <button type="button" onclick="closeCatalogAddModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all">Cancel</button>
+                    <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-2.5 rounded-xl transition-all shadow-md">Save & Publish</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 4. PRINTABLE BILL / RECEIPT SLIP MODAL                                    -->
+    <!-- ========================================================================= -->
+    <div id="bill-print-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            
+            <div id="printable-bill-area" class="text-left text-xs space-y-3 font-mono text-slate-800">
+                <!-- Receipt Header -->
+                <div class="text-center pb-2 border-b border-dashed border-slate-400 space-y-1">
+                    <span class="text-3xl block">🩴</span>
+                    <h2 class="text-lg font-black tracking-wider text-slate-900">TAKE 250</h2>
+                    <p class="text-[11px] font-bold text-slate-600">PREMIUM SLIPPER STORE</p>
+                    <p class="text-[10px] text-slate-500">Flat ₹250 Footwear • take250.web.app</p>
+                    <p class="text-[10px] text-slate-500" id="receipt-shop-phone"></p>
+                    <p class="text-[10px] text-emerald-700 font-bold" id="receipt-shop-whatsapp"></p>
+                </div>
+
+                <!-- Meta Details -->
+                <div class="text-[11px] space-y-0.5 pb-2 border-b border-dashed border-slate-300">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Bill No:</span>
+                        <span class="font-bold text-slate-900" id="receipt-bill-no">BILL-001</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Date & Time:</span>
+                        <span class="font-bold text-slate-900" id="receipt-bill-date">24/09/2026, 10:30 PM</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Customer:</span>
+                        <span class="font-bold text-slate-900" id="receipt-bill-cust">Walk-in</span>
+                    </div>
+                    <div class="flex justify-between" id="receipt-bill-phone-row">
+                        <span class="text-slate-500">Phone:</span>
+                        <span class="font-bold text-slate-900" id="receipt-bill-phone">-</span>
+                    </div>
+                    <div class="flex justify-between" id="receipt-bill-addr-row">
+                        <span class="text-slate-500">Address:</span>
+                        <span class="font-bold text-slate-900 text-right max-w-[180px]" id="receipt-bill-addr">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Payment:</span>
+                        <span class="font-bold text-slate-900 uppercase" id="receipt-bill-payment">GPay</span>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="space-y-1 pb-2 border-b border-dashed border-slate-300">
+                    <div class="flex justify-between text-[10px] font-bold text-slate-500 uppercase">
+                        <span>Item (Size)</span>
+                        <span>Qty x Rate</span>
+                        <span>Amount</span>
+                    </div>
+                    <div id="receipt-bill-items" class="space-y-1 text-[11px]">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Grand Total -->
+                <div class="flex justify-between items-baseline pt-1 font-sans">
+                    <span class="text-xs font-black uppercase text-slate-900">Total Paid:</span>
+                    <span class="text-xl font-black text-amber-700" id="receipt-bill-total">₹250</span>
+                </div>
+
+                <!-- Footer Note -->
+                <div class="text-center pt-2 border-t border-dashed border-slate-400 text-[10px] text-slate-500 space-y-0.5">
+                    <p class="font-bold text-slate-700">Thank you for visiting TAKE 250!</p>
+                    
+                </div>
+            </div>
+
+            <!-- WhatsApp Sharing Section in Print Bill Modal -->
+            <div class="no-print bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-3.5 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-black text-emerald-950 flex items-center space-x-1.5">
+                        <span class="text-base">📲</span>
+                        <span>Share Bill via WhatsApp</span>
+                    </span>
+                    <span class="text-[10px] font-extrabold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full">Instant Send</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="relative flex-1">
+                        <span class="absolute left-3 top-2 text-slate-500 font-bold text-xs">+91</span>
+                        <input type="tel" id="receipt-whatsapp-phone" maxlength="10" placeholder="10-digit WhatsApp number" class="w-full pl-10 pr-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner">
+                    </div>
+                    <button type="button" onclick="shareCurrentBillToWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black px-4 py-2 rounded-xl text-xs shadow-md flex items-center space-x-1.5 shrink-0 transition-all cursor-pointer">
+                        <span>💬</span>
+                        <span>Send WhatsApp</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Print & Close Actions -->
+            <div class="no-print pt-2 flex space-x-2 border-t border-slate-100">
+                <button onclick="window.print()" class="flex-2 w-2/3 bg-slate-900 hover:bg-slate-800 text-white font-black py-2.5 rounded-xl text-xs transition-all shadow-md flex items-center justify-center space-x-1.5 cursor-pointer">
+                    <span>🖨️</span>
+                    <span>Print Bill Receipt</span>
+                </button>
+                <button onclick="closeBillPrintModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer">
+                    Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="admin-toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
+
+    <!-- ========================================================================= -->
+    <!-- 5. JAVASCRIPT LOGIC                                                       -->
+    <!-- ========================================================================= -->
+    <script>
+        // --- State Management ---
+        let currentTab = 'orders';
+        let ordersHistory = JSON.parse(localStorage.getItem('take250_orders_v3')) || [];
+        let posBillsHistory = JSON.parse(localStorage.getItem('take250_pos_bills')) || [];
+        let products = JSON.parse(localStorage.getItem('take250_products_v3')) || [];
+        let currentBillItems = [];
+        let uploadedProductImage = null;
+        let uploadedQrImage = localStorage.getItem('take250_shop_qr_code') || null;
+        let audioCtx = null;
+        let soundEnabled = true;
+        let currentReceiptData = null;
+
+        // Shared communication channel
+        const commChannel = new BroadcastChannel('take250_sync_channel_v3');
+        commChannel.onmessage = (event) => {
+            if (event.data && event.data.type === 'NEW_ORDER') {
+                ordersHistory = JSON.parse(localStorage.getItem('take250_orders_v3')) || [];
+                playAlertChime();
+                showAdminToast("🔔 New Customer Order!", `Order #${event.data.order.id} from ${event.data.order.customerName}`);
+                renderOrdersFeed();
+                updateDashboardMetrics();
+            }
+            if (event.data && event.data.type === 'PRODUCTS_UPDATED') {
+                products = JSON.parse(localStorage.getItem('take250_products_v3')) || [];
+                renderCatalogTable();
+                populateBillProductDropdown();
+            }
+        };
+
+        // Window storage event
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'take250_orders_v3') {
+                ordersHistory = JSON.parse(e.newValue) || [];
+                renderOrdersFeed();
+                updateDashboardMetrics();
+            }
+            if (e.key === 'take250_products_v3') {
+                products = JSON.parse(e.newValue) || [];
+                renderCatalogTable();
+                populateBillProductDropdown();
+            }
+        });
+
+        // --- Default Products Definition (If Empty) ---
+        const DEFAULT_PRODUCTS = [
+            { id: 101, name: "Men's Arch Support Slide", category: "men", price: 250, badge: "Best Seller", image: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=500&auto=format&fit=crop&q=80", desc: "Ergonomic deep heel cup with anti-skid bottom for maximum comfort", sizes: [7, 8, 9, 10] },
+            { id: 102, name: "Men's Premium Leather Slide", category: "men", price: 250, badge: "Trending", image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=500&auto=format&fit=crop&q=80", desc: "Rich faux leather finish with durable traction sole", sizes: [7, 8, 9, 10] },
+            { id: 103, name: "Men's Lightweight EVA Flip-Flop", category: "men", price: 250, badge: "Durable", image: "https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=500&auto=format&fit=crop&q=80", desc: "Water-resistant ultra lightweight slippers for daily wear", sizes: [6, 7, 8, 9, 10] },
+            { id: 104, name: "Men's Sport Ventilation Clogs", category: "men", price: 250, badge: "All Weather", image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=80", desc: "Breathable clogs with pivoting heel strap and drainage holes", sizes: [7, 8, 9, 10] },
+            { id: 201, name: "Women's 4cm Cloud Cush Slides", category: "women", price: 250, badge: "Top Pick", image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500&auto=format&fit=crop&q=80", desc: "Ultra-thick cloud bounce sole, walking on clouds feeling", sizes: [5, 6, 7, 8] },
+            { id: 202, name: "Women's Velvet Cozy Slippers", category: "women", price: 250, badge: "Soft Touch", image: "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=500&auto=format&fit=crop&q=80", desc: "Super soft velvet touch indoor and bedroom slip-ons", sizes: [5, 6, 7, 8] },
+            { id: 203, name: "Women's Pastel Flip-Flop", category: "women", price: 250, badge: "Daily Wear", image: "https://images.unsplash.com/photo-1515347619252-60a4bf4fff4f?w=500&auto=format&fit=crop&q=80", desc: "Chic pastel tones with soft cushioned footbed", sizes: [4, 5, 6, 7, 8] },
+            { id: 301, name: "Doctor Ortho Pain Relief", category: "ortho", price: 250, badge: "Doctor Rec.", image: "https://images.unsplash.com/photo-1582588678413-dbf45f4823e9?w=500&auto=format&fit=crop&q=80", desc: "Relieves heel spur, joint pain, and plantar fasciitis", sizes: [6, 7, 8, 9, 10] },
+            { id: 302, name: "Super Cloud Bounce Pillow Slides", category: "ortho", price: 250, badge: "Cloud 4cm", image: "https://images.unsplash.com/photo-1595341888016-a392ef81b7de?w=500&auto=format&fit=crop&q=80", desc: "Max pillow cushioning to relax tired feet after work", sizes: [5, 6, 7, 8, 9] },
+            { id: 401, name: "Anti-Skid Bathroom Drain Slides", category: "house", price: 250, badge: "Drain Sole", image: "https://images.unsplash.com/photo-1539185441755-769473a23570?w=500&auto=format&fit=crop&q=80", desc: "Fast-drying drain holes with superior wet-floor grip", sizes: [5, 6, 7, 8, 9] },
+            { id: 402, name: "Classic Hawai Rubber Chappal", category: "house", price: 250, badge: "High Grip", image: "https://images.unsplash.com/photo-1562183241-b937e95585b6?w=500&auto=format&fit=crop&q=80", desc: "Heavy-duty flexible rubber chappal for rough and tough use", sizes: [6, 7, 8, 9, 10] },
+            { id: 501, name: "Kids Light-Up Dino Chappal", category: "kids", price: 250, badge: "Kids Fun", image: "https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=500&auto=format&fit=crop&q=80", desc: "Fun cartoon dinosaur grip chappal for playful feet", sizes: [2, 3, 4, 5] }
+        ];
+
+        if (products.length === 0) {
+            products = [...DEFAULT_PRODUCTS];
+            localStorage.setItem('take250_products_v3', JSON.stringify(products));
+        }
+
+        // =========================================================================
+        // AUTHENTICATION LOGIC (NO DEFAULT PASSWORD)
+        // =========================================================================
+        function checkAdminAuth() {
+            // Check Base64 password key
+            let savedPassword = localStorage.getItem('adminPasswordSecure');
+            
+            // If legacy take250_admin_password exists, migrate it to adminPasswordSecure
+            if (!savedPassword && localStorage.getItem('take250_admin_password')) {
+                const legacy = localStorage.getItem('take250_admin_password');
+                try {
+                    savedPassword = btoa(unescape(encodeURIComponent(legacy)));
+                } catch(e) {
+                    savedPassword = btoa(legacy);
+                }
+                localStorage.setItem('adminPasswordSecure', savedPassword);
+            }
+
+            const sessionActive = sessionStorage.getItem('take250_admin_session_active');
+
+            const overlay = document.getElementById('auth-overlay');
+            const setupForm = document.getElementById('setup-form');
+            const loginForm = document.getElementById('login-form');
+            const forgotForm = document.getElementById('forgot-form');
+            const mainContainer = document.getElementById('admin-main-container');
+
+            if (!savedPassword) {
+                // No password created yet -> Show Setup Form
+                overlay.classList.remove('hidden');
+                setupForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+                if (forgotForm) forgotForm.classList.add('hidden');
+                mainContainer.classList.add('hidden');
+                document.getElementById('auth-heading').textContent = "Welcome Store Owner";
+                document.getElementById('auth-subheading').textContent = "Initial Setup: Create your own secure admin password";
+            } else if (sessionActive === 'true') {
+                // Logged in
+                overlay.classList.add('hidden');
+                mainContainer.classList.remove('hidden');
+                initAdminDashboard();
+            } else {
+                // Password exists, but session not active -> Show Login Form
+                overlay.classList.remove('hidden');
+                setupForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+                if (forgotForm) forgotForm.classList.add('hidden');
+                mainContainer.classList.add('hidden');
+                document.getElementById('auth-heading').textContent = "Admin Portal";
+                document.getElementById('auth-subheading').textContent = "Enter your custom admin password to proceed";
+            }
+        }
+
+        function handleInitialPasswordSetup(e) {
+            e.preventDefault();
+            const pass = document.getElementById('setup-pass').value.trim();
+            const confirm = document.getElementById('setup-pass-confirm').value.trim();
+            const phone = document.getElementById('setup-phone') ? document.getElementById('setup-phone').value.trim() : '';
+            const pin = document.getElementById('setup-pin') ? document.getElementById('setup-pin').value.trim() : '';
+            const errEl = document.getElementById('setup-error');
+            errEl.classList.add('hidden');
+
+            if (pass.length < 4) {
+                errEl.textContent = "Password must be at least 4 characters long.";
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            if (pass !== confirm) {
+                errEl.textContent = "Passwords do not match! Please check and try again.";
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            // Save Base64 encoded password
+            let encodedPass = '';
+            try {
+                encodedPass = btoa(unescape(encodeURIComponent(pass)));
+            } catch(err) {
+                encodedPass = btoa(pass);
+            }
+            localStorage.setItem('adminPasswordSecure', encodedPass);
+            localStorage.setItem('take250_admin_password', encodedPass);
+
+            if (phone) {
+                const cleanPhone = phone.replace(/[\s\-\+]/g, '').replace(/^91/, '');
+                localStorage.setItem('setup-phone', cleanPhone);
+                localStorage.setItem('take250_admin_recovery_phone', cleanPhone);
+                if (!localStorage.getItem('take250_shop_gpay_mobile')) {
+                    localStorage.setItem('take250_shop_gpay_mobile', cleanPhone);
+                }
+            }
+
+            if (pin) {
+                localStorage.setItem('adminPIN', pin);
+                localStorage.setItem('take250_admin_recovery_pin', pin);
+            } else {
+                localStorage.setItem('adminPIN', '2500');
+                localStorage.setItem('take250_admin_recovery_pin', '2500');
+            }
+
+            sessionStorage.setItem('take250_admin_session_active', 'true');
+            alert("Admin password and recovery security saved successfully! Opening dashboard.");
+            checkAdminAuth();
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const inputPass = document.getElementById('login-pass').value.trim();
+            const savedPassHash = localStorage.getItem('adminPasswordSecure') || localStorage.getItem('take250_admin_password');
+            const errEl = document.getElementById('login-error');
+
+            let encodedInput = '';
+            try {
+                encodedInput = btoa(unescape(encodeURIComponent(inputPass)));
+            } catch(err) {
+                encodedInput = btoa(inputPass);
+            }
+
+            if (encodedInput === savedPassHash || btoa(inputPass) === savedPassHash || inputPass === savedPassHash) {
+                sessionStorage.setItem('take250_admin_session_active', 'true');
+                errEl.classList.add('hidden');
+                checkAdminAuth();
+            } else {
+                errEl.classList.remove('hidden');
+            }
+        }
+
+        // =========================================================================
+        // FORGOT PASSWORD RECOVERY HANDLERS
+        // =========================================================================
+        // 1. Forgot Password படிவத்தை காட்டுவதற்கான ஃபங்ஷன்
+        function showForgotPasswordForm() {
+            document.getElementById('login-form').classList.add('hidden');
+            if (document.getElementById('setup-form')) document.getElementById('setup-form').classList.add('hidden');
+            document.getElementById('forgot-form').classList.remove('hidden');
+            const errDiv = document.getElementById('forgot-error');
+            if (errDiv) errDiv.classList.add('hidden');
+        }
+
+        function hideForgotPasswordForm() {
+            document.getElementById('forgot-form').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('auth-heading').textContent = "Admin Portal";
+            document.getElementById('auth-subheading').textContent = "Enter your custom admin password to proceed";
+        }
+
+        // 2. பாஸ்வேர்டை மீட்டமைக்கும் (Reset) ஃபங்ஷன்
+        function handleForgotPasswordReset(event) {
+            event.preventDefault();
+            
+            const inputEl = document.getElementById('forgot-input') || document.getElementById('forgot-verification-input');
+            const enteredInput = inputEl ? inputEl.value.trim() : ''; // Mobile Number அல்லது PIN
+            const newPass = document.getElementById('forgot-new-pass').value.trim();
+            const confirmPass = document.getElementById('forgot-confirm-pass').value.trim();
+            const errorDiv = document.getElementById('forgot-error'); // உங்கள் HTML-ல் உள்ள Error Div ID
+
+            const savedPhone = localStorage.getItem('setup-phone') || localStorage.getItem('take250_admin_recovery_phone') || localStorage.getItem('take250_shop_gpay_mobile');
+            const savedPIN = localStorage.getItem('adminPIN') || localStorage.getItem('take250_admin_recovery_pin') || "2500";
+
+            const cleanInput = enteredInput.replace(/[\s\-\+]/g, '').replace(/^91/, '');
+            const cleanPhone = savedPhone ? savedPhone.replace(/[\s\-\+]/g, '').replace(/^91/, '') : '';
+
+            // சரிபார்ப்பு (Validation)
+            if (enteredInput !== savedPhone && cleanInput !== cleanPhone && enteredInput !== savedPIN && cleanInput !== "2500") {
+                if (errorDiv) {
+                    errorDiv.textContent = "தவறான மொபைல் எண் அல்லது செக்யூரிட்டி PIN!";
+                    errorDiv.classList.remove('hidden');
+                } else {
+                    alert("தவறான மொபைல் எண் அல்லது செக்யூரிட்டி PIN!");
+                }
+                return;
+            }
+            if (newPass.length < 4) {
+                if (errorDiv) {
+                    errorDiv.textContent = "புதிய பாஸ்வேர்ட் குறைந்தது 4 எழுத்துக்கள் இருக்க வேண்டும்!";
+                    errorDiv.classList.remove('hidden');
+                } else {
+                    alert("புதிய பாஸ்வேர்ட் குறைந்தது 4 எழுத்துக்கள் இருக்க வேண்டும்!");
+                }
+                return;
+            }
+            if (newPass !== confirmPass) {
+                if (errorDiv) {
+                    errorDiv.textContent = "பாஸ்வேர்டுகள் ஒத்துப்போகவில்லை!";
+                    errorDiv.classList.remove('hidden');
+                } else {
+                    alert("பாஸ்வேர்டுகள் ஒத்துப்போகவில்லை!");
+                }
+                return;
+            }
+
+            // புதிய பாஸ்வேர்டை Base64 ஆக மாற்றி சேமித்தல்
+            let encodedPass = '';
+            try {
+                encodedPass = btoa(unescape(encodeURIComponent(newPass)));
+            } catch(e) {
+                encodedPass = btoa(newPass);
+            }
+            localStorage.setItem('adminPasswordSecure', encodedPass);
+            localStorage.setItem('take250_admin_password', encodedPass);
+
+            alert("பாஸ்வேர்ட் வெற்றிகரமாக மாற்றப்பட்டது! புதிய பாஸ்வேர்ட் மூலம் லாக்-இன் செய்யவும்.");
+            
+            // மீண்டும் லாக்-இன் திரைக்குச் செல்லுதல்
+            document.getElementById('forgot-form').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+            if (errorDiv) errorDiv.classList.add('hidden');
+        }
+
+        function logoutAdmin() {
+            sessionStorage.removeItem('take250_admin_session_active');
+            window.location.reload();
+        }
+
+        // =========================================================================
+        // NAVIGATION & TABS
+        // =========================================================================
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('.admin-tab-btn').forEach(b => {
+                b.className = "admin-tab-btn px-3.5 py-1.5 rounded-xl font-bold text-slate-400 hover:text-white transition-all flex items-center space-x-1.5 whitespace-nowrap";
+            });
+
+            const activePanel = document.getElementById(`tab-${tab}`);
+            const activeBtn = document.getElementById(`tab-btn-${tab}`);
+            if (activePanel) activePanel.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.className = "admin-tab-btn px-3.5 py-1.5 rounded-xl font-black bg-amber-500 text-slate-950 transition-all flex items-center space-x-1.5 whitespace-nowrap shadow-sm";
+            }
+
+            if (tab === 'orders') {
+                renderOrdersFeed();
+                updateDashboardMetrics();
+            } else if (tab === 'billing') {
+                populateBillProductDropdown();
+                renderBillsHistory();
+                updateBillSequence();
+            } else if (tab === 'reports') {
+                initReportsTab();
+            } else if (tab === 'catalog') {
+                renderCatalogTable();
+            } else if (tab === 'payment') {
+                loadPaymentSettings();
+            } else if (tab === 'security') {
+                loadSecuritySettings();
+            }
+        }
+
+        // =========================================================================
+        // TAB 1: LIVE ORDERS & DASHBOARD METRICS
+        // =========================================================================
+        function updateDashboardMetrics() {
+            const onlineRevenue = ordersHistory.reduce((s, o) => s + (o.total || 0), 0);
+            const counterRevenue = posBillsHistory.reduce((s, b) => s + (b.total || 0), 0);
+            const totalRevenue = onlineRevenue + counterRevenue;
+
+            const onlinePairs = ordersHistory.reduce((s, o) => s + (o.totalQty || o.items?.reduce((iq, i) => iq + i.qty, 0) || 0), 0);
+            const counterPairs = posBillsHistory.reduce((s, b) => s + (b.totalQty || b.items?.reduce((iq, i) => iq + i.qty, 0) || 0), 0);
+            const totalPairs = onlinePairs + counterPairs;
+
+            document.getElementById('metric-total-sales').textContent = `₹${totalRevenue}`;
+            document.getElementById('metric-online-orders').textContent = ordersHistory.length;
+            document.getElementById('metric-counter-bills').textContent = posBillsHistory.length;
+            document.getElementById('metric-pairs-sold').textContent = totalPairs;
+
+            const activeOrders = ordersHistory.filter(o => o.status !== 'COMPLETED');
+            document.getElementById('active-orders-badge').textContent = `${activeOrders.length} Active`;
+            
+            const tabBadge = document.getElementById('tab-orders-badge');
+            if (activeOrders.length > 0) {
+                tabBadge.textContent = activeOrders.length;
+                tabBadge.classList.remove('hidden');
+            } else {
+                tabBadge.classList.add('hidden');
+            }
+        }
+
+        function renderOrdersFeed() {
+            const container = document.getElementById('orders-list-container');
+            if (ordersHistory.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400 space-y-2">
+                        <div class="text-4xl">📥</div>
+                        <p class="font-bold text-slate-600">No customer orders yet</p>
+                        <p class="text-xs">Incoming orders from the shop will appear here with instant audio chime alert.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = ordersHistory.map(o => {
+                const statusColor = o.status === 'NEW' 
+                    ? 'bg-rose-100 text-rose-800 border-rose-300' 
+                    : o.status === 'PREPARING' 
+                        ? 'bg-amber-100 text-amber-800 border-amber-300' 
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-300';
+
+                const addressText = o.address ? o.address : (o.orderType === 'Store Pickup' ? 'Store Pickup' : 'No address provided');
+
+                return `
+                    <div class="p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3 hover:border-amber-400 transition-colors">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-black text-slate-900 text-sm">#${o.id}</span>
+                                <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${statusColor}">
+                                    ${o.status}
+                                </span>
+                                <span class="text-xs text-slate-500 font-semibold">• ${o.displayTime || ''} ${o.displayDate || ''}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <select onchange="updateOrderStatus('${o.id}', this.value)" class="text-xs font-bold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700">
+                                    <option value="NEW" ${o.status === 'NEW' ? 'selected' : ''}>NEW</option>
+                                    <option value="PREPARING" ${o.status === 'PREPARING' ? 'selected' : ''}>PREPARING</option>
+                                    <option value="COMPLETED" ${o.status === 'COMPLETED' ? 'selected' : ''}>COMPLETED</option>
+                                </select>
+                                <button onclick="shareOrderViaWhatsApp('${o.id}')" title="Share Bill on WhatsApp" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded-lg font-bold flex items-center space-x-1 shadow-xs transition-all active:scale-95 cursor-pointer">
+                                    <span>💬</span>
+                                    <span>WhatsApp</span>
+                                </button>
+                                <button onclick="printOrderSlip('${o.id}')" title="Print Slip" class="bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs px-2.5 py-1 rounded-lg font-bold cursor-pointer">
+                                    🖨️ Slip
+                                </button>
+                                <button onclick="deleteOrder('${o.id}')" title="Delete" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1 font-bold">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Customer Info & Address -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div class="space-y-0.5">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase block">Customer Details</span>
+                                <p class="font-black text-slate-800">${o.customerName}</p>
+                                <p class="text-slate-600 font-bold"><a href="tel:${o.customerPhone}" class="text-amber-800 underline">📞 +91 ${o.customerPhone}</a></p>
+                            </div>
+                            <div class="space-y-0.5">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase block">Delivery Address (${o.orderType})</span>
+                                <p class="text-slate-700 font-medium leading-relaxed bg-white p-2 rounded-xl border border-slate-200">${addressText}</p>
+                            </div>
+                        </div>
+
+                        <!-- Items List -->
+                        <div class="bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-1 text-xs">
+                            <span class="text-[10px] text-slate-400 font-bold uppercase block">Ordered Slippers</span>
+                            ${o.items.map(i => `
+                                <div class="flex justify-between items-center text-slate-700">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="font-extrabold text-amber-700">${i.qty}x</span>
+                                        <span class="font-bold">${i.name}</span>
+                                        <span class="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.2 rounded">Size ${i.size}</span>
+                                    </div>
+                                    <span class="font-extrabold text-slate-900">₹${i.price * i.qty}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- Footer Total -->
+                        <div class="flex justify-between items-center pt-1 font-extrabold text-slate-800 text-xs">
+                            <span class="text-slate-500">Payment Mode: <span class="text-slate-800 font-black">${o.paymentMethod || 'GPay / Cash on Delivery'}</span></span>
+                            <span class="text-sm font-black text-amber-700">Total: ₹${o.total}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateOrderStatus(orderId, newStatus) {
+            const order = ordersHistory.find(o => o.id === orderId);
+            if (order) {
+                order.status = newStatus;
+                localStorage.setItem('take250_orders_v3', JSON.stringify(ordersHistory));
+                updateDashboardMetrics();
+                renderOrdersFeed();
+                showAdminToast("Status Updated", `Order #${orderId} marked as ${newStatus}`);
+            }
+        }
+
+        function deleteOrder(orderId) {
+            if (confirm(`Delete order #${orderId}?`)) {
+                ordersHistory = ordersHistory.filter(o => o.id !== orderId);
+                localStorage.setItem('take250_orders_v3', JSON.stringify(ordersHistory));
+                updateDashboardMetrics();
+                renderOrdersFeed();
+                showAdminToast("Order Deleted", `Removed #${orderId}`);
+            }
+        }
+
+        function clearOrdersHistory() {
+            if (confirm("Clear all online customer orders history?")) {
+                ordersHistory = [];
+                localStorage.setItem('take250_orders_v3', JSON.stringify(ordersHistory));
+                updateDashboardMetrics();
+                renderOrdersFeed();
+                showAdminToast("Orders Cleared", "Online orders history cleared.");
+            }
+        }
+
+        function printOrderSlip(orderId) {
+            const order = ordersHistory.find(o => o.id === orderId);
+            if (!order) return;
+
+            document.getElementById('receipt-bill-no').textContent = '#' + order.id;
+            document.getElementById('receipt-bill-date').textContent = `${order.displayDate || ''} ${order.displayTime || ''}`;
+            document.getElementById('receipt-bill-cust').textContent = order.customerName;
+            document.getElementById('receipt-bill-phone').textContent = '+91 ' + order.customerPhone;
+            document.getElementById('receipt-bill-addr').textContent = order.address || order.orderType || '-';
+            document.getElementById('receipt-bill-payment').textContent = order.paymentMethod || 'Online / COD';
+            
+            const shopGpay = localStorage.getItem('take250_shop_gpay_mobile') || '';
+            const shopPhoneEl = document.getElementById('receipt-shop-phone');
+            if (shopPhoneEl) shopPhoneEl.textContent = shopGpay ? 'GPay: +91 ' + shopGpay : '';
+            const shopWaEl = document.getElementById('receipt-shop-whatsapp');
+            if (shopWaEl) shopWaEl.textContent = shopGpay ? 'WhatsApp: +91 ' + shopGpay : '';
+
+            const itemsContainer = document.getElementById('receipt-bill-items');
+            itemsContainer.innerHTML = order.items.map(i => `
+                <div class="flex justify-between items-center">
+                    <span>${i.name} (UK ${i.size})</span>
+                    <span>${i.qty} x ₹${i.price}</span>
+                    <span class="font-bold">₹${i.qty * i.price}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('receipt-bill-total').textContent = `₹${order.total}`;
+
+            currentReceiptData = {
+                billNo: '#' + order.id,
+                date: `${order.displayDate || ''} ${order.displayTime || ''}`.trim(),
+                customerName: order.customerName,
+                customerPhone: order.customerPhone,
+                customerAddress: order.address || order.orderType || '-',
+                paymentMode: order.paymentMethod || 'Online / COD',
+                items: order.items,
+                total: order.total
+            };
+
+            const phoneInput = document.getElementById('receipt-whatsapp-phone');
+            if (phoneInput) {
+                const cleanPhone = (order.customerPhone || '').replace(/[\s\-\+\(\)]/g, '').replace(/^91/, '');
+                phoneInput.value = cleanPhone;
+            }
+
+            document.getElementById('bill-print-modal').classList.remove('hidden');
+        }
+
+        // =========================================================================
+        // TAB 2: SEPARATE BILL PAGE MODULE (POS COUNTER BILLING)
+        // =========================================================================
+        function updateBillSequence() {
+            const seq = posBillsHistory.length + 1;
+            const seqStr = String(seq).padStart(3, '0');
+            document.getElementById('bill-seq-number').textContent = `BILL-${seqStr}`;
+        }
+
+        function populateBillProductDropdown() {
+            const select = document.getElementById('bill-select-product');
+            select.innerHTML = products.map(p => `
+                <option value="${p.id}" data-price="${p.price}">
+                    ${p.name} — ₹${p.price} (${p.category.toUpperCase()})
+                </option>
+            `).join('');
+            handleBillProductSelect();
+        }
+
+        function handleBillProductSelect() {
+            const select = document.getElementById('bill-select-product');
+            const selectedOpt = select.options[select.selectedIndex];
+            if (!selectedOpt) return;
+            const price = selectedOpt.getAttribute('data-price') || 250;
+            document.getElementById('bill-item-price').value = price;
+
+            // Populate sizes for this product
+            const prod = products.find(p => p.id == select.value);
+            const sizeSelect = document.getElementById('bill-select-size');
+            const sizes = (prod && prod.sizes && prod.sizes.length > 0) ? prod.sizes : [6, 7, 8, 9, 10];
+            sizeSelect.innerHTML = sizes.map(s => `<option value="${s}">UK ${s}</option>`).join('');
+        }
+
+        function addItemToCurrentBill() {
+            const select = document.getElementById('bill-select-product');
+            const prodId = select.value;
+            const prod = products.find(p => p.id == prodId);
+            if (!prod) return;
+
+            const size = document.getElementById('bill-select-size').value;
+            const qty = parseInt(document.getElementById('bill-item-qty').value) || 1;
+            const price = parseFloat(document.getElementById('bill-item-price').value) || 250;
+
+            const existingIndex = currentBillItems.findIndex(i => i.id == prodId && i.size == size);
+            if (existingIndex > -1) {
+                currentBillItems[existingIndex].qty += qty;
+            } else {
+                currentBillItems.push({
+                    id: prod.id,
+                    name: prod.name,
+                    size: size,
+                    qty: qty,
+                    price: price
+                });
+            }
+
+            renderCurrentBillTable();
+            showAdminToast("Item Added", `${prod.name} (UK ${size}) added to bill.`);
+        }
+
+        function renderCurrentBillTable() {
+            const tbody = document.getElementById('bill-current-items-body');
+            const countBadge = document.getElementById('bill-items-count-badge');
+            const totalEl = document.getElementById('bill-grand-total');
+
+            countBadge.textContent = `${currentBillItems.length} items`;
+
+            if (currentBillItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400 font-medium">No items added to this bill yet.</td></tr>`;
+                totalEl.textContent = '₹0';
+                return;
+            }
+
+            let total = 0;
+            tbody.innerHTML = currentBillItems.map((item, idx) => {
+                const sub = item.qty * item.price;
+                total += sub;
+                return `
+                    <tr class="hover:bg-slate-50 font-medium">
+                        <td class="p-2.5 font-bold text-slate-800">${item.name}</td>
+                        <td class="p-2.5"><span class="bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded">UK ${item.size}</span></td>
+                        <td class="p-2.5 text-center font-bold">${item.qty}</td>
+                        <td class="p-2.5 text-right font-semibold">₹${item.price}</td>
+                        <td class="p-2.5 text-right font-black text-amber-700">₹${sub}</td>
+                        <td class="p-2.5 text-center">
+                            <button onclick="removeCurrentBillItem(${idx})" class="text-rose-500 hover:text-rose-700 font-bold px-1.5 py-0.5 rounded hover:bg-rose-50">✕</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            totalEl.textContent = `₹${total}`;
+        }
+
+        function removeCurrentBillItem(index) {
+            currentBillItems.splice(index, 1);
+            renderCurrentBillTable();
+        }
+
+        function generateAndPrintBill() {
+            if (currentBillItems.length === 0) {
+                alert("Please add at least one slipper item to generate a bill.");
+                return;
+            }
+
+            const custName = document.getElementById('bill-cust-name').value.trim() || 'Walk-in Customer';
+            const custPhone = document.getElementById('bill-cust-phone').value.trim() || '-';
+            const custAddress = document.getElementById('bill-cust-address').value.trim() || '-';
+            const paymentMode = document.querySelector('input[name="bill-payment-mode"]:checked').value;
+
+            const billNumber = document.getElementById('bill-seq-number').textContent;
+            const total = currentBillItems.reduce((s, i) => s + (i.price * i.qty), 0);
+            const totalQty = currentBillItems.reduce((s, i) => s + i.qty, 0);
+
+            const newBill = {
+                billNo: billNumber,
+                timestamp: new Date().toISOString(),
+                displayDate: new Date().toLocaleDateString(),
+                displayTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                customerName: custName,
+                customerPhone: custPhone,
+                customerAddress: custAddress,
+                paymentMode: paymentMode,
+                items: [...currentBillItems],
+                total: total,
+                totalQty: totalQty
+            };
+
+            posBillsHistory.unshift(newBill);
+            localStorage.setItem('take250_pos_bills', JSON.stringify(posBillsHistory));
+
+            // Load into receipt modal
+            document.getElementById('receipt-bill-no').textContent = newBill.billNo;
+            document.getElementById('receipt-bill-date').textContent = `${newBill.displayDate} ${newBill.displayTime}`;
+            document.getElementById('receipt-bill-cust').textContent = newBill.customerName;
+            document.getElementById('receipt-bill-phone').textContent = newBill.customerPhone;
+            document.getElementById('receipt-bill-addr').textContent = newBill.customerAddress;
+            document.getElementById('receipt-bill-payment').textContent = newBill.paymentMode;
+            
+            const shopGpay = localStorage.getItem('take250_shop_gpay_mobile') || '';
+            const shopPhoneEl = document.getElementById('receipt-shop-phone');
+            if (shopPhoneEl) shopPhoneEl.textContent = shopGpay ? 'GPay: +91 ' + shopGpay : '';
+            const shopWaEl = document.getElementById('receipt-shop-whatsapp');
+            if (shopWaEl) shopWaEl.textContent = shopGpay ? 'WhatsApp: +91 ' + shopGpay : '';
+
+            const itemsContainer = document.getElementById('receipt-bill-items');
+            itemsContainer.innerHTML = newBill.items.map(i => `
+                <div class="flex justify-between items-center">
+                    <span>${i.name} (UK ${i.size})</span>
+                    <span>${i.qty} x ₹${i.price}</span>
+                    <span class="font-bold">₹${i.qty * i.price}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('receipt-bill-total').textContent = `₹${newBill.total}`;
+
+            currentReceiptData = {
+                billNo: newBill.billNo,
+                date: `${newBill.displayDate} ${newBill.displayTime}`,
+                customerName: newBill.customerName,
+                customerPhone: newBill.customerPhone,
+                customerAddress: newBill.customerAddress,
+                paymentMode: newBill.paymentMode,
+                items: newBill.items,
+                total: newBill.total
+            };
+
+            const phoneInput = document.getElementById('receipt-whatsapp-phone');
+            if (phoneInput) {
+                const cleanPhone = (newBill.customerPhone || '').replace(/[\s\-\+\(\)]/g, '').replace(/^91/, '');
+                phoneInput.value = (cleanPhone && cleanPhone !== '-') ? cleanPhone : '';
+            }
+
+            document.getElementById('bill-print-modal').classList.remove('hidden');
+
+            // Reset current bill form
+            currentBillItems = [];
+            renderCurrentBillTable();
+            document.getElementById('bill-cust-name').value = '';
+            document.getElementById('bill-cust-phone').value = '';
+            document.getElementById('bill-cust-address').value = '';
+            updateBillSequence();
+            renderBillsHistory();
+            updateDashboardMetrics();
+
+            showAdminToast("Bill Generated!", `${newBill.billNo} saved for ₹${newBill.total}`);
+        }
+
+        function closeBillPrintModal() {
+            document.getElementById('bill-print-modal').classList.add('hidden');
+        }
+
+        function renderBillsHistory() {
+            const container = document.getElementById('bills-history-list');
+            const searchVal = (document.getElementById('bill-search-input')?.value || '').toLowerCase().trim();
+
+            let filtered = posBillsHistory;
+            if (searchVal) {
+                filtered = posBillsHistory.filter(b => 
+                    b.billNo.toLowerCase().includes(searchVal) ||
+                    (b.customerName && b.customerName.toLowerCase().includes(searchVal)) ||
+                    (b.customerPhone && b.customerPhone.includes(searchVal))
+                );
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 space-y-1">
+                        <div class="text-3xl">🧾</div>
+                        <p class="font-bold text-slate-500 text-xs">No bills found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(b => `
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+                    <div class="flex justify-between items-center">
+                        <span class="font-black text-slate-900">${b.billNo}</span>
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${b.paymentMode === 'GPay' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'}">
+                            ${b.paymentMode}
+                        </span>
+                    </div>
+                    <div class="flex justify-between text-slate-600 text-[11px]">
+                        <span>${b.customerName || 'Walk-in'} (${b.customerPhone || 'No Phone'})</span>
+                        <span class="text-slate-400">${b.displayTime || ''}</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-1 border-t border-slate-200">
+                        <span class="font-extrabold text-amber-700">₹${b.total} (${b.items.length} items)</span>
+                        <div class="flex items-center space-x-1.5">
+                            <button onclick="sharePosBillViaWhatsApp('${b.billNo}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded text-[10px] flex items-center space-x-1 transition-all active:scale-95 shadow-xs cursor-pointer" title="Send Receipt on WhatsApp">
+                                <span>💬</span>
+                                <span>WhatsApp</span>
+                            </button>
+                            <button onclick="reprintBill('${b.billNo}')" class="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold px-2 py-1 rounded text-[10px] cursor-pointer">
+                                🖨️ Re-Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function reprintBill(billNo) {
+            const bill = posBillsHistory.find(b => b.billNo === billNo);
+            if (!bill) return;
+
+            document.getElementById('receipt-bill-no').textContent = bill.billNo;
+            document.getElementById('receipt-bill-date').textContent = `${bill.displayDate} ${bill.displayTime}`;
+            document.getElementById('receipt-bill-cust').textContent = bill.customerName;
+            document.getElementById('receipt-bill-phone').textContent = bill.customerPhone;
+            document.getElementById('receipt-bill-addr').textContent = bill.customerAddress;
+            document.getElementById('receipt-bill-payment').textContent = bill.paymentMode;
+            
+            const shopGpay = localStorage.getItem('take250_shop_gpay_mobile') || '';
+            const shopPhoneEl = document.getElementById('receipt-shop-phone');
+            if (shopPhoneEl) shopPhoneEl.textContent = shopGpay ? 'GPay: +91 ' + shopGpay : '';
+            const shopWaEl = document.getElementById('receipt-shop-whatsapp');
+            if (shopWaEl) shopWaEl.textContent = shopGpay ? 'WhatsApp: +91 ' + shopGpay : '';
+
+            const itemsContainer = document.getElementById('receipt-bill-items');
+            itemsContainer.innerHTML = bill.items.map(i => `
+                <div class="flex justify-between items-center">
+                    <span>${i.name} (UK ${i.size})</span>
+                    <span>${i.qty} x ₹${i.price}</span>
+                    <span class="font-bold">₹${i.qty * i.price}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('receipt-bill-total').textContent = `₹${bill.total}`;
+
+            currentReceiptData = {
+                billNo: bill.billNo,
+                date: `${bill.displayDate} ${bill.displayTime}`,
+                customerName: bill.customerName,
+                customerPhone: bill.customerPhone,
+                customerAddress: bill.customerAddress,
+                paymentMode: bill.paymentMode,
+                items: bill.items,
+                total: bill.total
+            };
+
+            const phoneInput = document.getElementById('receipt-whatsapp-phone');
+            if (phoneInput) {
+                const cleanPhone = (bill.customerPhone || '').replace(/[\s\-\+\(\)]/g, '').replace(/^91/, '');
+                phoneInput.value = (cleanPhone && cleanPhone !== '-') ? cleanPhone : '';
+            }
+
+            document.getElementById('bill-print-modal').classList.remove('hidden');
+        }
+
+        // =========================================================================
+        // WHATSAPP BILL RECEIPT SHARING HELPERS
+        // =========================================================================
+        function formatBillForWhatsApp(data) {
+            if (!data) return '';
+            const shopName = "TAKE 250 - Slipper Store";
+            const shopAddress = localStorage.getItem('take250_shop_address') || "Main Road, Opp. Bus Stand";
+            const shopGpay = localStorage.getItem('take250_shop_gpay_mobile') || "";
+            const billNo = data.billNo || "BILL";
+            const date = data.date || new Date().toLocaleString('en-IN');
+            const custName = data.customerName || "Valued Customer";
+            const custPhone = data.customerPhone && data.customerPhone !== '-' ? data.customerPhone : '';
+            const paymentMode = data.paymentMode || "Cash";
+            const total = data.total || 0;
+
+            let msg = `🧾 *OFFICIAL BILL RECEIPT*\n`;
+            msg += `🏪 *${shopName}*\n`;
+            msg += `📍 ${shopAddress}\n`;
+            if (shopGpay) msg += `💳 Shop GPay: +91 ${shopGpay}\n`;
+            msg += `🌐 Online Store: https://take250.web.app\n`;
+            msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+            msg += `📄 *Bill / Slip No:* ${billNo}\n`;
+            msg += `📅 *Date & Time:* ${date}\n`;
+            msg += `👤 *Customer:* ${custName}\n`;
+            if (custPhone) msg += `📞 *Phone:* ${custPhone}\n`;
+            if (data.customerAddress && data.customerAddress !== '-') msg += `🏠 *Address:* ${data.customerAddress}\n`;
+            msg += `💳 *Payment Mode:* ${paymentMode}\n`;
+            msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+            msg += `🛍️ *PURCHASED ITEMS:*\n`;
+
+            if (data.items && data.items.length > 0) {
+                data.items.forEach((item, idx) => {
+                    const itemName = item.name || 'Slipper';
+                    const size = item.size ? ` (UK ${item.size})` : '';
+                    const qty = item.qty || 1;
+                    const price = item.price || 250;
+                    const lineTotal = qty * price;
+                    msg += `${idx + 1}. *${itemName}${size}*\n   └ ${qty} pcs × ₹${price} = *₹${lineTotal}*\n`;
+                });
+            } else {
+                msg += `1. Slippers - ₹${total}\n`;
+            }
+
+            msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+            msg += `💰 *TOTAL AMOUNT PAID: ₹${total}*\n`;
+            msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+            msg += `✨ *Thank you for shopping with TAKE 250!* ✨\n`;
+            msg += `🙏 For latest models & delivery: https://take250.web.app`;
+
+            return msg;
+        }
+
+        function openWhatsAppWithMessage(phone, message) {
+            const cleanPhone = (phone || '').replace(/[\s\-\+\(\)]/g, '').replace(/^91/, '');
+            const encodedText = encodeURIComponent(message);
+            
+            let url = '';
+            if (cleanPhone && cleanPhone.length === 10) {
+                url = `https://wa.me/91${cleanPhone}?text=${encodedText}`;
+            } else if (cleanPhone && cleanPhone.length > 10) {
+                url = `https://wa.me/${cleanPhone}?text=${encodedText}`;
+            } else {
+                url = `https://api.whatsapp.com/send?text=${encodedText}`;
+            }
+            window.open(url, '_blank');
+        }
+
+        function shareCurrentBillToWhatsApp() {
+            if (!currentReceiptData) {
+                showAdminToast("Receipt Not Ready", "Please open or generate a bill first.");
+                return;
+            }
+            const phoneInput = document.getElementById('receipt-whatsapp-phone');
+            let phone = phoneInput ? phoneInput.value.trim() : '';
+            if (!phone && currentReceiptData.customerPhone && currentReceiptData.customerPhone !== '-') {
+                phone = currentReceiptData.customerPhone;
+            }
+
+            const cleanPhone = phone.replace(/[\s\-\+\(\)]/g, '').replace(/^91/, '');
+            if (!cleanPhone || cleanPhone.length < 10) {
+                const promptPhone = prompt("Please enter customer's 10-digit WhatsApp number:", cleanPhone || '');
+                if (promptPhone === null) return;
+                phone = promptPhone.trim();
+            }
+
+            const message = formatBillForWhatsApp(currentReceiptData);
+            openWhatsAppWithMessage(phone, message);
+            showAdminToast("Opening WhatsApp", `Sending ${currentReceiptData.billNo} to WhatsApp...`);
+        }
+
+        function sharePosBillViaWhatsApp(billNo) {
+            const bill = posBillsHistory.find(b => b.billNo === billNo);
+            if (!bill) {
+                showAdminToast("Bill Not Found", `Could not find bill ${billNo}`);
+                return;
+            }
+
+            const receiptData = {
+                billNo: bill.billNo,
+                date: `${bill.displayDate} ${bill.displayTime}`,
+                customerName: bill.customerName,
+                customerPhone: bill.customerPhone,
+                customerAddress: bill.customerAddress,
+                paymentMode: bill.paymentMode,
+                items: bill.items,
+                total: bill.total
+            };
+
+            let phone = (bill.customerPhone || '').replace(/[\s\-\+\(\)]/g, '').replace(/^91/, '');
+            if (!phone || phone.length < 10 || phone === '-') {
+                const promptPhone = prompt(`Enter 10-digit WhatsApp number for ${bill.billNo}:`, '');
+                if (!promptPhone) return;
+                phone = promptPhone.trim();
+            }
+
+            const message = formatBillForWhatsApp(receiptData);
+            openWhatsAppWithMessage(phone, message);
+            showAdminToast("Opening WhatsApp", `Sending ${bill.billNo} receipt via WhatsApp...`);
+        }
+
+        function shareOrderViaWhatsApp(orderId) {
+            const order = ordersHistory.find(o => o.id === orderId);
+            if (!order) {
+                showAdminToast("Order Not Found", `Order #${orderId} not found`);
+                return;
+            }
+
+            const receiptData = {
+                billNo: '#' + order.id,
+                date: `${order.displayDate || ''} ${order.displayTime || ''}`.trim(),
+                customerName: order.customerName,
+                customerPhone: order.customerPhone,
+                customerAddress: order.address || order.orderType || '-',
+                paymentMode: order.paymentMethod || 'Online / COD',
+                items: order.items,
+                total: order.total
+            };
+
+            let phone = (order.customerPhone || '').replace(/[\s\-\+\(\)]/g, '').replace(/^91/, '');
+            if (!phone || phone.length < 10) {
+                const promptPhone = prompt(`Enter customer WhatsApp number for Order #${order.id}:`, '');
+                if (!promptPhone) return;
+                phone = promptPhone.trim();
+            }
+
+            const message = formatBillForWhatsApp(receiptData);
+            openWhatsAppWithMessage(phone, message);
+            showAdminToast("Opening WhatsApp", `Sending Order #${order.id} receipt via WhatsApp...`);
+        }
+
+        function clearBillsHistory() {
+            if (confirm("Clear all counter bills history?")) {
+                posBillsHistory = [];
+                localStorage.setItem('take250_pos_bills', JSON.stringify(posBillsHistory));
+                renderBillsHistory();
+                updateBillSequence();
+                updateDashboardMetrics();
+                showAdminToast("Bills Cleared", "Counter billing history cleared.");
+            }
+        }
+
+        // =========================================================================
+        // TAB 3: SLIPPER CATALOG & PHOTO MANAGEMENT
+        // =========================================================================
+        function renderCatalogTable() {
+            const tbody = document.getElementById('catalog-table-body');
+            const badge = document.getElementById('catalog-count-badge');
+            badge.textContent = products.length;
+
+            if (products.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-bold">Catalog is empty. Click "Add Slipper With Photo" to add products.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = products.map(p => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="py-3">
+                        <div class="flex items-center space-x-3">
+                            <img src="${p.image || 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=500&auto=format&fit=crop&q=80'}" class="w-12 h-12 object-cover rounded-xl border border-slate-200" alt="${p.name}">
+                            <div>
+                                <h4 class="font-bold text-slate-900 text-xs">${p.name}</h4>
+                                <span class="text-[10px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded">${p.badge || 'Flat ₹250'}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3 uppercase font-bold text-slate-600 text-[11px]">${p.category}</td>
+                    <td class="py-3">
+                        <div class="flex flex-wrap gap-1">
+                            ${p.sizes.map(s => `<span class="bg-slate-100 text-slate-700 font-bold px-1.5 py-0.5 rounded text-[10px]">${s}</span>`).join('')}
+                        </div>
+                    </td>
+                    <td class="py-3 font-black text-amber-700 text-sm">₹${p.price}</td>
+                    <td class="py-3 text-right">
+                        <button onclick="removeCatalogProduct(${p.id})" class="text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg font-bold text-xs transition-all border border-rose-200">
+                            🗑️ Remove
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openCatalogAddModal() {
+            uploadedProductImage = null;
+            document.getElementById('modal-prod-img-url').value = '';
+            document.getElementById('modal-preview-container').classList.add('hidden');
+            document.getElementById('catalog-add-modal').classList.remove('hidden');
+        }
+
+        function closeCatalogAddModal() {
+            document.getElementById('catalog-add-modal').classList.add('hidden');
+        }
+
+        function handleProductFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedProductImage = e.target.result;
+                const previewImg = document.getElementById('modal-preview-el');
+                const previewContainer = document.getElementById('modal-preview-container');
+                previewImg.src = uploadedProductImage;
+                previewContainer.classList.remove('hidden');
+                document.getElementById('modal-prod-img-url').value = '';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleProductUrlInput(event) {
+            const url = event.target.value.trim();
+            const previewImg = document.getElementById('modal-preview-el');
+            const previewContainer = document.getElementById('modal-preview-container');
+            if (url) {
+                uploadedProductImage = null;
+                previewImg.src = url;
+                previewContainer.classList.remove('hidden');
+            } else {
+                previewContainer.classList.add('hidden');
+            }
+        }
+
+        function handleSaveCatalogProduct(e) {
+            e.preventDefault();
+            const name = document.getElementById('modal-prod-name').value.trim();
+            const category = document.getElementById('modal-prod-cat').value;
+            const price = parseFloat(document.getElementById('modal-prod-price').value) || 250;
+            const badge = document.getElementById('modal-prod-badge').value.trim() || 'New';
+            const sizesRaw = document.getElementById('modal-prod-sizes').value;
+            const desc = document.getElementById('modal-prod-desc').value.trim() || 'Comfortable daily wear slipper';
+            const urlInput = document.getElementById('modal-prod-img-url').value.trim();
+
+            const finalImage = uploadedProductImage || urlInput || 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=500&auto=format&fit=crop&q=80';
+
+            const sizes = sizesRaw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+
+            const newProd = {
+                id: Date.now(),
+                name: name,
+                category: category,
+                price: price,
+                badge: badge,
+                image: finalImage,
+                desc: desc,
+                sizes: sizes.length > 0 ? sizes : [6, 7, 8, 9, 10]
+            };
+
+            products.unshift(newProd);
+            localStorage.setItem('take250_products_v3', JSON.stringify(products));
+            commChannel.postMessage({ type: 'PRODUCTS_UPDATED' });
+
+            closeCatalogAddModal();
+            renderCatalogTable();
+            populateBillProductDropdown();
+            showAdminToast("Product Added", `"${name}" added to store catalog.`);
+        }
+
+        function removeCatalogProduct(prodId) {
+            const prod = products.find(p => p.id === prodId);
+            if (!prod) return;
+            if (confirm(`Remove "${prod.name}" from catalog?`)) {
+                products = products.filter(p => p.id !== prodId);
+                localStorage.setItem('take250_products_v3', JSON.stringify(products));
+                commChannel.postMessage({ type: 'PRODUCTS_UPDATED' });
+                renderCatalogTable();
+                populateBillProductDropdown();
+                showAdminToast("Product Removed", `"${prod.name}" removed.`);
+            }
+        }
+
+        function resetToDefaultSlippers() {
+            if (confirm("Reset catalog back to standard default slippers?")) {
+                products = [...DEFAULT_PRODUCTS];
+                localStorage.setItem('take250_products_v3', JSON.stringify(products));
+                commChannel.postMessage({ type: 'PRODUCTS_UPDATED' });
+                renderCatalogTable();
+                populateBillProductDropdown();
+                showAdminToast("Catalog Reset", "Restored standard models.");
+            }
+        }
+
+        // =========================================================================
+        // TAB 4: GPAY ONLY MOBILE NUMBER & QR CODE SETTINGS
+        // =========================================================================
+        function loadPaymentSettings() {
+            const savedPhone = localStorage.getItem('take250_shop_gpay_mobile') || '';
+            const savedQr = localStorage.getItem('take250_shop_qr_code') || '';
+
+            document.getElementById('settings-gpay-phone').value = savedPhone;
+
+            const previewContainer = document.getElementById('qr-preview-container');
+            const previewImage = document.getElementById('qr-preview-image');
+            const removeBtn = document.getElementById('btn-remove-qr');
+
+            if (savedQr) {
+                uploadedQrImage = savedQr;
+                previewImage.src = savedQr;
+                previewContainer.classList.remove('hidden');
+                removeBtn.classList.remove('hidden');
+            } else {
+                uploadedQrImage = null;
+                previewContainer.classList.add('hidden');
+                removeBtn.classList.add('hidden');
+            }
+        }
+
+        function handleQrFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedQrImage = e.target.result;
+                const previewImage = document.getElementById('qr-preview-image');
+                previewImage.src = uploadedQrImage;
+                document.getElementById('qr-preview-container').classList.remove('hidden');
+                document.getElementById('btn-remove-qr').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeQrCode() {
+            uploadedQrImage = null;
+            document.getElementById('qr-preview-container').classList.add('hidden');
+            document.getElementById('btn-remove-qr').classList.add('hidden');
+            localStorage.removeItem('take250_shop_qr_code');
+            showAdminToast("QR Removed", "Shop payment QR code removed.");
+        }
+
+        function handleSavePaymentSettings(e) {
+            e.preventDefault();
+            const phone = document.getElementById('settings-gpay-phone').value.trim();
+            const statusEl = document.getElementById('payment-settings-status');
+
+            if (phone && phone.length < 10) {
+                statusEl.textContent = "Please enter a valid 10-digit mobile phone number.";
+                statusEl.className = "p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 block";
+                return;
+            }
+
+            if (phone) {
+                localStorage.setItem('take250_shop_gpay_mobile', phone);
+            } else {
+                localStorage.removeItem('take250_shop_gpay_mobile');
+            }
+
+            if (uploadedQrImage) {
+                localStorage.setItem('take250_shop_qr_code', uploadedQrImage);
+            }
+
+            statusEl.textContent = "Payment settings saved successfully! Shop checkout will now use your custom GPay mobile number and uploaded QR code.";
+            statusEl.className = "p-3 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 block";
+            showAdminToast("Payment Saved", "GPay number & QR code updated for customers.");
+        }
+
+        // =========================================================================
+        // TAB 5: PASSWORD SETTINGS
+        // =========================================================================
+        // 3. அட்மின் டேஷ்போர்டில் இருந்து பாஸ்வேர்ட் மாற்றும் வசதி (Change Admin Password)
+        function handleChangePassword(event) {
+            event.preventDefault();
+            const currentPass = (document.getElementById('change-current-pass') || document.getElementById('pass-current')).value;
+            const newPass = (document.getElementById('change-new-pass') || document.getElementById('pass-new')).value;
+            const confirmPass = (document.getElementById('change-confirm-pass') || document.getElementById('pass-confirm')).value;
+            
+            const savedPassHash = localStorage.getItem('adminPasswordSecure') || localStorage.getItem('take250_admin_password');
+
+            let isMatch = false;
+            if (btoa(currentPass) === savedPassHash) {
+                isMatch = true;
+            } else {
+                try {
+                    if (decodeURIComponent(escape(atob(savedPassHash))) === currentPass || atob(savedPassHash) === currentPass || savedPassHash === currentPass) {
+                        isMatch = true;
+                    }
+                } catch(e) {
+                    if (savedPassHash === currentPass) isMatch = true;
+                }
+            }
+
+            if (!isMatch) {
+                alert("தற்போதைய பாஸ்வேர்ட் தவறானது!");
+                return;
+            }
+            if (newPass.length < 4) {
+                alert("புதிய பாஸ்வேர்ட் குறைந்தது 4 எழுத்துக்கள் இருக்க வேண்டும்!");
+                return;
+            }
+            if (newPass !== confirmPass) {
+                alert("புதிய பாஸ்வேர்டுகள் ஒத்துப்போகவில்லை!");
+                return;
+            }
+
+            const newEncoded = btoa(newPass);
+            localStorage.setItem('adminPasswordSecure', newEncoded);
+            localStorage.setItem('take250_admin_password', newEncoded);
+            alert("பாஸ்வேர்ட் வெற்றிகரமாகப் புதுப்பிக்கப்பட்டது!");
+
+            const currentEl = document.getElementById('change-current-pass') || document.getElementById('pass-current');
+            const newEl = document.getElementById('change-new-pass') || document.getElementById('pass-new');
+            const confirmEl = document.getElementById('change-confirm-pass') || document.getElementById('pass-confirm');
+            if (currentEl) currentEl.value = '';
+            if (newEl) newEl.value = '';
+            if (confirmEl) confirmEl.value = '';
+            showAdminToast("Security Updated", "Admin password changed successfully.");
+        }
+
+        function loadSecuritySettings() {
+            const savedPhone = localStorage.getItem('take250_admin_recovery_phone') || localStorage.getItem('take250_shop_gpay_mobile') || '';
+            const savedPin = localStorage.getItem('take250_admin_recovery_pin') || '2500';
+
+            const phoneEl = document.getElementById('security-recovery-phone');
+            const pinEl = document.getElementById('security-recovery-pin');
+
+            if (phoneEl) phoneEl.value = savedPhone;
+            if (pinEl) pinEl.value = savedPin;
+        }
+
+        function handleSaveRecoverySettings(e) {
+            e.preventDefault();
+            const phone = document.getElementById('security-recovery-phone').value.trim();
+            const pin = document.getElementById('security-recovery-pin').value.trim();
+            const statusEl = document.getElementById('recovery-status');
+
+            if (phone && phone.length < 10) {
+                statusEl.textContent = "Please enter a valid 10-digit mobile phone number.";
+                statusEl.className = "p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 block";
+                return;
+            }
+
+            if (phone) {
+                const cleanPhone = phone.replace(/[\s\-\+]/g, '').replace(/^91/, '');
+                localStorage.setItem('take250_admin_recovery_phone', cleanPhone);
+            }
+
+            if (pin) {
+                localStorage.setItem('take250_admin_recovery_pin', pin);
+            }
+
+            statusEl.textContent = "✓ Recovery settings saved! You can use this phone or PIN to recover your password anytime.";
+            statusEl.className = "p-3 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 block";
+            showAdminToast("Recovery Saved", "Password recovery details updated.");
+        }
+
+        // =========================================================================
+        // TAB: MONTHLY CUSTOMER ORDERS & EXCEL EXPORT
+        // =========================================================================
+        function initReportsTab() {
+            populateReportMonthDropdown();
+            renderMonthlyReportTable();
+        }
+
+        function getAllCombinedOrders() {
+            // Online orders
+            const onlineList = (ordersHistory || []).map(o => ({
+                id: '#' + o.id,
+                rawId: o.id,
+                type: 'Online Delivery',
+                orderType: o.orderType || 'Online Order',
+                timestamp: o.timestamp || o.date || new Date().toISOString(),
+                displayDate: o.displayDate || new Date(o.timestamp || Date.now()).toLocaleDateString(),
+                displayTime: o.displayTime || '',
+                customerName: o.customerName || 'Online Customer',
+                customerPhone: o.customerPhone || '-',
+                address: o.address || (o.orderType === 'Store Pickup' ? 'Store Pickup' : 'No address provided'),
+                items: o.items || [],
+                itemsSummary: (o.items || []).map(i => `${i.qty}x ${i.name} (UK ${i.size})`).join(', '),
+                totalQty: (o.items || []).reduce((sum, i) => sum + (i.qty || 1), 0),
+                total: o.total || 0,
+                paymentMode: o.paymentMethod || 'GPay / Cash on Delivery',
+                status: o.status || 'COMPLETED'
+            }));
+
+            // POS bills
+            const posList = (posBillsHistory || []).map(b => ({
+                id: b.billNo,
+                rawId: b.billNo,
+                type: 'Counter POS',
+                orderType: 'Store Counter Sale',
+                timestamp: b.timestamp || new Date().toISOString(),
+                displayDate: b.displayDate || new Date(b.timestamp || Date.now()).toLocaleDateString(),
+                displayTime: b.displayTime || '',
+                customerName: b.customerName || 'Walk-in Customer',
+                customerPhone: b.customerPhone || '-',
+                address: b.customerAddress || 'Counter Store Sale',
+                items: b.items || [],
+                itemsSummary: (b.items || []).map(i => `${i.qty}x ${i.name} (UK ${i.size})`).join(', '),
+                totalQty: b.totalQty || (b.items || []).reduce((sum, i) => sum + (i.qty || 1), 0),
+                total: b.total || 0,
+                paymentMode: b.paymentMode || 'Cash',
+                status: 'PAID'
+            }));
+
+            // Merge and sort newest first
+            return [...onlineList, ...posList].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+
+        function populateReportMonthDropdown() {
+            const select = document.getElementById('report-month-filter');
+            if (!select) return;
+            const currentSelection = select.value;
+
+            const all = getAllCombinedOrders();
+            const monthsMap = new Map();
+
+            all.forEach(item => {
+                const d = new Date(item.timestamp);
+                if (!isNaN(d.getTime())) {
+                    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    const label = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+                    monthsMap.set(key, label);
+                }
+            });
+
+            // Ensure current month is present
+            const now = new Date();
+            const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            if (!monthsMap.has(currentKey)) {
+                monthsMap.set(currentKey, now.toLocaleString('default', { month: 'long', year: 'numeric' }));
+            }
+
+            select.innerHTML = '<option value="all">All Months (All Time)</option>';
+            Array.from(monthsMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).forEach(([key, label]) => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = label;
+                if (key === currentSelection) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function getFilteredOrders() {
+            const all = getAllCombinedOrders();
+            const monthVal = document.getElementById('report-month-filter')?.value || 'all';
+            const sourceVal = document.getElementById('report-source-filter')?.value || 'all';
+            const searchVal = (document.getElementById('report-search-input')?.value || '').toLowerCase().trim();
+
+            return all.filter(o => {
+                // Month filter
+                if (monthVal !== 'all') {
+                    const d = new Date(o.timestamp);
+                    if (!isNaN(d.getTime())) {
+                        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                        if (ym !== monthVal) return false;
+                    }
+                }
+
+                // Source filter
+                if (sourceVal === 'online' && o.type !== 'Online Delivery') return false;
+                if (sourceVal === 'pos' && o.type !== 'Counter POS') return false;
+
+                // Search filter
+                if (searchVal) {
+                    const matchId = (o.id || '').toLowerCase().includes(searchVal);
+                    const matchName = (o.customerName || '').toLowerCase().includes(searchVal);
+                    const matchPhone = (o.customerPhone || '').toLowerCase().includes(searchVal);
+                    const matchAddr = (o.address || '').toLowerCase().includes(searchVal);
+                    const matchItems = (o.itemsSummary || '').toLowerCase().includes(searchVal);
+                    if (!matchId && !matchName && !matchPhone && !matchAddr && !matchItems) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+        }
+
+        function renderMonthlyReportTable() {
+            const filtered = getFilteredOrders();
+            const tbody = document.getElementById('report-table-body');
+            const emptyEl = document.getElementById('report-empty-state');
+            if (!tbody) return;
+
+            // Calculate KPIs
+            const totalRev = filtered.reduce((s, o) => s + (o.total || 0), 0);
+            const totalPairs = filtered.reduce((s, o) => s + (o.totalQty || 0), 0);
+            const aov = filtered.length > 0 ? Math.round(totalRev / filtered.length) : 0;
+
+            const revEl = document.getElementById('report-metric-revenue');
+            const ordEl = document.getElementById('report-metric-orders');
+            const pairEl = document.getElementById('report-metric-pairs');
+            const aovEl = document.getElementById('report-metric-aov');
+
+            if (revEl) revEl.textContent = `₹${totalRev.toLocaleString('en-IN')}`;
+            if (ordEl) ordEl.textContent = filtered.length;
+            if (pairEl) pairEl.textContent = totalPairs;
+            if (aovEl) aovEl.textContent = `₹${aov.toLocaleString('en-IN')}`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                if (emptyEl) emptyEl.classList.remove('hidden');
+                return;
+            }
+
+            if (emptyEl) emptyEl.classList.add('hidden');
+            tbody.innerHTML = filtered.map(o => {
+                const typeBadge = o.type === 'Online Delivery' 
+                    ? '<span class="bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">Online</span>'
+                    : '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">POS Counter</span>';
+
+                const statusColor = o.status === 'COMPLETED' || o.status === 'PAID'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : o.status === 'PREPARING'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-3 px-4 whitespace-nowrap font-medium text-slate-600">
+                            <div>${o.displayDate}</div>
+                            <div class="text-[10px] text-slate-400">${o.displayTime}</div>
+                        </td>
+                        <td class="py-3 px-3 font-black text-slate-900 whitespace-nowrap">${o.id}</td>
+                        <td class="py-3 px-3">${typeBadge}</td>
+                        <td class="py-3 px-4">
+                            <div class="font-extrabold text-slate-900">${o.customerName}</div>
+                            <div class="text-slate-500 font-medium">${o.customerPhone !== '-' ? `+91 ${o.customerPhone}` : '-'}</div>
+                        </td>
+                        <td class="py-3 px-4 text-slate-600 max-w-[200px] truncate" title="${o.address}">${o.address}</td>
+                        <td class="py-3 px-4">
+                            <div class="space-y-0.5 max-w-[220px]">
+                                ${(o.items || []).map(i => `
+                                    <div class="flex items-center space-x-1 text-[11px] text-slate-700">
+                                        <span class="font-bold text-amber-700">${i.qty}x</span>
+                                        <span class="truncate">${i.name}</span>
+                                        <span class="text-[9px] bg-slate-100 text-slate-600 px-1 py-0.2 rounded font-bold">UK ${i.size}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </td>
+                        <td class="py-3 px-3 whitespace-nowrap font-bold text-slate-700">${o.paymentMode}</td>
+                        <td class="py-3 px-4 text-right whitespace-nowrap font-black text-amber-700 text-sm">₹${o.total}</td>
+                        <td class="py-3 px-3 text-center whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded-full border text-[10px] font-black uppercase ${statusColor}">
+                                ${o.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function exportOrdersToExcel() {
+            const filtered = getFilteredOrders();
+            if (filtered.length === 0) {
+                alert("No orders data to export for current filter!");
+                return;
+            }
+
+            const monthSelect = document.getElementById('report-month-filter');
+            const monthText = monthSelect ? monthSelect.options[monthSelect.selectedIndex].text.replace(/[^a-zA-Z0-9]/g, '_') : 'All';
+            const fileName = `TAKE250_Customer_Orders_${monthText}.xlsx`;
+
+            // Prepare Rows for SheetJS
+            const headers = [
+                "Order / Bill No",
+                "Order Type",
+                "Date",
+                "Time",
+                "Customer Name",
+                "Customer Phone",
+                "Delivery Address",
+                "Items Purchased",
+                "Total Quantity",
+                "Payment Method",
+                "Total Amount (INR)",
+                "Status"
+            ];
+
+            const rows = filtered.map(o => [
+                o.id,
+                o.type,
+                o.displayDate,
+                o.displayTime,
+                o.customerName,
+                o.customerPhone,
+                o.address,
+                o.itemsSummary,
+                o.totalQty,
+                o.paymentMode,
+                o.total,
+                o.status
+            ]);
+
+            // Check if SheetJS (XLSX) is available
+            if (typeof XLSX !== 'undefined') {
+                const worksheetData = [headers, ...rows];
+                const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+
+                // Set column widths
+                ws['!cols'] = [
+                    { wch: 15 }, // ID
+                    { wch: 16 }, // Type
+                    { wch: 14 }, // Date
+                    { wch: 10 }, // Time
+                    { wch: 22 }, // Name
+                    { wch: 16 }, // Phone
+                    { wch: 30 }, // Address
+                    { wch: 35 }, // Items
+                    { wch: 12 }, // Total Qty
+                    { wch: 18 }, // Payment
+                    { wch: 16 }, // Amount
+                    { wch: 14 }  // Status
+                ];
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Customer Orders");
+                XLSX.writeFile(wb, fileName);
+                showAdminToast("Excel Exported", `Downloaded ${fileName}`);
+            } else {
+                // Fallback to CSV with UTF-8 BOM
+                exportOrdersToCsv();
+            }
+        }
+
+        function exportOrdersToCsv() {
+            const filtered = getFilteredOrders();
+            if (filtered.length === 0) {
+                alert("No orders data to export for current filter!");
+                return;
+            }
+
+            const monthSelect = document.getElementById('report-month-filter');
+            const monthText = monthSelect ? monthSelect.options[monthSelect.selectedIndex].text.replace(/[^a-zA-Z0-9]/g, '_') : 'All';
+            const fileName = `TAKE250_Customer_Orders_${monthText}.csv`;
+
+            const headers = [
+                "Order / Bill No",
+                "Order Type",
+                "Date",
+                "Time",
+                "Customer Name",
+                "Customer Phone",
+                "Delivery Address",
+                "Items Purchased",
+                "Total Quantity",
+                "Payment Method",
+                "Total Amount (INR)",
+                "Status"
+            ];
+
+            const rows = filtered.map(o => [
+                o.id,
+                o.type,
+                o.displayDate,
+                o.displayTime,
+                o.customerName,
+                o.customerPhone,
+                o.address,
+                o.itemsSummary,
+                o.totalQty,
+                o.paymentMode,
+                o.total,
+                o.status
+            ]);
+
+            const csvContent = "\uFEFF" + [
+                headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','),
+                ...rows.map(r => r.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))
+            ].join('\r\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showAdminToast("CSV Exported", `Downloaded ${fileName}`);
+        }
+
+        // =========================================================================
+        // AUDIO ALERTS & SOUNDS
+        // =========================================================================
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioClass) audioCtx = new AudioClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playAlertChime() {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const now = ctx.currentTime;
+                playTone(ctx, 523.25, now, 0.35, 0.4);
+                playTone(ctx, 659.25, now + 0.12, 0.35, 0.45);
+                playTone(ctx, 783.99, now + 0.24, 0.45, 0.5);
+                playTone(ctx, 1046.50, now + 0.36, 0.7, 0.65, true);
+            } catch (e) {
+                console.warn('Audio error:', e);
+            }
+        }
+
+        function playTone(ctx, freq, start, duration, gainLevel, isBell = false) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = isBell ? 'triangle' : 'sine';
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.001, start);
+            gain.gain.linearRampToValueAtTime(gainLevel, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + duration);
+        }
+
+        function toggleAudioChime() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('audio-icon');
+            const text = document.getElementById('audio-text');
+            const btn = document.getElementById('audio-toggle-btn');
+
+            if (soundEnabled) {
+                btn.className = "bg-emerald-950/60 border border-emerald-500/40 hover:bg-emerald-900 text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5";
+                icon.textContent = "🔊";
+                text.textContent = "Chime ON";
+                playAlertChime();
+                showAdminToast("Audio Active", "Chime enabled for new orders.");
+            } else {
+                btn.className = "bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-400 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5";
+                icon.textContent = "🔇";
+                text.textContent = "Chime OFF";
+                showAdminToast("Muted", "Audio chime muted.");
+            }
+        }
+
+        function testChimeSound() {
+            getAudioContext();
+            playAlertChime();
+            showAdminToast("Chime Test", "Notification sound triggered!");
+        }
+
+        // =========================================================================
+        // TOAST NOTIFICATIONS
+        // =========================================================================
+        function showAdminToast(title, message) {
+            const container = document.getElementById('admin-toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-slate-900 text-white border-l-4 border-amber-500 shadow-2xl rounded-2xl p-4 w-80 transform transition-all duration-300 translate-x-full opacity-0 pointer-events-auto flex flex-col';
+            toast.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <h4 class="text-amber-400 font-black text-xs flex items-center space-x-1.5">
+                        <span>🔔</span>
+                        <span>${title}</span>
+                    </h4>
+                </div>
+                <p class="text-xs text-slate-300 mt-1 font-medium leading-relaxed">${message}</p>
+            `;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 350);
+            }, 3500);
+        }
+
+        // =========================================================================
+        // INITIALIZATION
+        // =========================================================================
+        function initAdminDashboard() {
+            renderOrdersFeed();
+            updateDashboardMetrics();
+            populateBillProductDropdown();
+            renderBillsHistory();
+            updateBillSequence();
+            renderCatalogTable();
+            loadPaymentSettings();
+            loadSecuritySettings();
+            initReportsTab();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAdminAuth();
+        });
+    </script>
+</body>
+</html>

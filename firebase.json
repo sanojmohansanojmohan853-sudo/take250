@@ -1,0 +1,20 @@
+{
+  "hosting": {
+    "site": "take250",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "bill.py",
+      "dist/**",
+      "*.db"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
